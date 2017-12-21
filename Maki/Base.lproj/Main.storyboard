@@ -723,7 +723,7 @@
                         <rect key="frame" x="0.0" y="0.0" width="512" height="512"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <scrollView borderType="none" horizontalLineScroll="10" horizontalPageScroll="10" verticalLineScroll="10" verticalPageScroll="10" allowsMagnification="YES" usesPredominantAxisScrolling="NO" translatesAutoresizingMaskIntoConstraints="NO" id="1eR-Vk-CGO">
+                            <scrollView borderType="none" autohidesScrollers="YES" horizontalLineScroll="10" horizontalPageScroll="10" verticalLineScroll="10" verticalPageScroll="10" allowsMagnification="YES" usesPredominantAxisScrolling="NO" translatesAutoresizingMaskIntoConstraints="NO" id="1eR-Vk-CGO">
                                 <rect key="frame" x="0.0" y="0.0" width="512" height="512"/>
                                 <clipView key="contentView" id="Ocg-Kx-pyb" customClass="CenteringClipView" customModule="Maki" customModuleProvider="target">
                                     <rect key="frame" x="0.0" y="0.0" width="512" height="512"/>
@@ -738,11 +738,11 @@
                                     </subviews>
                                     <color key="backgroundColor" red="0.46666666666666667" green="0.46666666666666667" blue="0.46666666666666667" alpha="1" colorSpace="calibratedRGB"/>
                                 </clipView>
-                                <scroller key="horizontalScroller" verticalHuggingPriority="750" horizontal="YES" id="t0L-fz-7q2">
+                                <scroller key="horizontalScroller" hidden="YES" verticalHuggingPriority="750" horizontal="YES" id="t0L-fz-7q2">
                                     <rect key="frame" x="0.0" y="496" width="512" height="16"/>
                                     <autoresizingMask key="autoresizingMask"/>
                                 </scroller>
-                                <scroller key="verticalScroller" verticalHuggingPriority="750" doubleValue="1" horizontal="NO" id="nGc-Be-g9K">
+                                <scroller key="verticalScroller" hidden="YES" verticalHuggingPriority="750" horizontal="NO" id="nGc-Be-g9K">
                                     <rect key="frame" x="496" y="0.0" width="16" height="512"/>
                                     <autoresizingMask key="autoresizingMask"/>
                                 </scroller>

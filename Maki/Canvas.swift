@@ -24,6 +24,10 @@ struct Selection {
     }
 }
 
+struct Frame {
+    var elements : [NSBezierPath] = []
+}
+
 extension Canvas {
     var center : NSPoint {
         get {
@@ -33,10 +37,16 @@ extension Canvas {
 }
 
 class Canvas: NSView {
-    var elements : [NSBezierPath] = []
+    var frames : [Frame] = [Frame()]
+    var current = 0
     var selection : Selection?
 
     override var preservesContentDuringLiveResize : Bool {
+        get {
+            return true
+        }
+    }
+    override var acceptsFirstResponder: Bool {
         get {
             return true
         }
@@ -52,7 +62,7 @@ class Canvas: NSView {
         
         NSColor.blue.set()
         
-        for el in elements {
+        for el in frames[current].elements {
             if needsToDraw(el.bounds) {
                 el.fill()
             }
@@ -61,7 +71,7 @@ class Canvas: NSView {
     
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        if let element = elements.first(where: { $0.contains(point) }) {
+        if let element = frames[current].elements.first(where: { $0.contains(point) }) {
             selection = Selection(element: element, point: point)
         } else {
             selection = nil
@@ -79,17 +89,54 @@ class Canvas: NSView {
     }
     
     override func mouseUp(with event: NSEvent) {
-        guard selection == nil else {
-            setNeedsDisplay(selection!.element.bounds)
+        guard let rect = selection?.element.bounds else {
             return
         }
-
-        let center = self.center
-        let s = self.bounds.width / 4
-        let rect = NSRect(x: center.x - s/2, y: center.y - s/2, width: s, height: s)
-        let path = NSBezierPath(ovalIn: rect)
-        elements.append(path)
-
         setNeedsDisplay(rect)
+    }
+    
+    override func keyDown(with event: NSEvent) {
+        if let key = event.characters?.first {
+            print("key", key)
+            switch key {
+            case "c":
+                let center = self.center
+                let s = self.bounds.width / 4
+                let rect = NSRect(x: center.x - s/2, y: center.y - s/2, width: s, height: s)
+                let path = NSBezierPath(ovalIn: rect)
+                frames[current].elements.append(path)
+                setNeedsDisplay(rect)
+                return
+            case ".":
+                nextFrame()
+                print("frame", current)
+                return
+            case ",":
+                prevFrame()
+                print("frame", current)
+                return
+            default:
+                break
+            }
+        }
+        
+        super.keyDown(with: event)
+    }
+    
+    func nextFrame() {
+        current += 1
+        if (current >= frames.count) {
+            let frame = Frame()
+            frames.append(frame)
+        }
+        setNeedsDisplay(bounds)
+    }
+    
+    func prevFrame() {
+        current -= 1
+        if (current < 0) {
+            current = 0
+        }
+        setNeedsDisplay(bounds)
     }
 }
