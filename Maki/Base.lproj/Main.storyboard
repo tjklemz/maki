@@ -683,12 +683,26 @@
         <!--Window Controller-->
         <scene sceneID="R2V-B0-nI4">
             <objects>
-                <windowController storyboardIdentifier="Document Window Controller" id="jGA-0Y-lOj" sceneMemberID="viewController">
+                <windowController storyboardIdentifier="Document Window Controller" id="jGA-0Y-lOj" customClass="WindowController" customModule="Maki" customModuleProvider="target" sceneMemberID="viewController">
                     <window key="window" title="Window" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" oneShot="NO" releasedWhenClosed="NO" showsToolbarButton="NO" visibleAtLaunch="NO" animationBehavior="default" id="Ckk-yw-fiv">
                         <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
                         <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
                         <rect key="contentRect" x="196" y="240" width="512" height="512"/>
                         <rect key="screenRect" x="0.0" y="0.0" width="1680" height="1027"/>
+                        <value key="minSize" type="size" width="256" height="256"/>
+                        <toolbar key="toolbar" implicitIdentifier="B16AC36B-78FC-4D0E-956C-0EFB92417E74" showsBaselineSeparator="NO" displayMode="iconOnly" sizeMode="small" id="K0d-Ve-EX4">
+                            <allowedToolbarItems>
+                                <toolbarItem implicitItemIdentifier="NSToolbarShowColorsItem" id="lJj-mq-sbN"/>
+                                <toolbarItem implicitItemIdentifier="NSToolbarShowFontsItem" id="u8k-yn-qwA"/>
+                                <toolbarItem implicitItemIdentifier="NSToolbarSpaceItem" id="pG5-NC-7Nt"/>
+                                <toolbarItem implicitItemIdentifier="NSToolbarFlexibleSpaceItem" id="VZ3-4f-MZa"/>
+                            </allowedToolbarItems>
+                            <defaultToolbarItems>
+                                <toolbarItem reference="lJj-mq-sbN"/>
+                                <toolbarItem reference="u8k-yn-qwA"/>
+                                <toolbarItem reference="VZ3-4f-MZa"/>
+                            </defaultToolbarItems>
+                        </toolbar>
                         <connections>
                             <outlet property="delegate" destination="jGA-0Y-lOj" id="98r-iN-zZc"/>
                         </connections>
@@ -718,12 +732,11 @@
                                         <customView wantsLayer="YES" ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="sMp-nj-Kda" customClass="Canvas" customModule="Maki" customModuleProvider="target">
                                             <rect key="frame" x="0.0" y="0.0" width="512" height="512"/>
                                             <constraints>
-                                                <constraint firstAttribute="width" constant="512" id="m7M-qy-Qrc"/>
                                                 <constraint firstAttribute="height" constant="512" id="uMQ-v5-mvh"/>
                                             </constraints>
                                         </customView>
                                     </subviews>
-                                    <color key="backgroundColor" name="controlColor" catalog="System" colorSpace="catalog"/>
+                                    <color key="backgroundColor" red="0.46666666666666667" green="0.46666666666666667" blue="0.46666666666666667" alpha="1" colorSpace="calibratedRGB"/>
                                 </clipView>
                                 <scroller key="horizontalScroller" verticalHuggingPriority="750" horizontal="YES" id="t0L-fz-7q2">
                                     <rect key="frame" x="0.0" y="496" width="512" height="16"/>
@@ -742,6 +755,9 @@
                             <constraint firstItem="1eR-Vk-CGO" firstAttribute="top" secondItem="ERx-hH-rdd" secondAttribute="top" id="aXm-PB-921"/>
                         </constraints>
                     </view>
+                    <connections>
+                        <outlet property="canvas" destination="sMp-nj-Kda" id="cEK-HM-b6w"/>
+                    </connections>
                 </viewController>
                 <customObject id="2Tp-Fl-jBw" userLabel="First Responder" customClass="NSResponder" sceneMemberID="firstResponder"/>
             </objects>
