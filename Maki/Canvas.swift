@@ -7,6 +7,69 @@
 //
 
 import Cocoa
+import CoreGraphics
+
+public extension NSBezierPath {
+    public var cgPath : CGPath {
+        let path = CGMutablePath()
+        var didClose = true
+        var points = [CGPoint](repeating: .zero, count: 3)
+
+        for i in 0 ..< self.elementCount {
+            let type = self.element(at: i, associatedPoints: &points)
+            switch type {
+            case .moveToBezierPathElement:
+                path.move(to: points[0])
+            case .lineToBezierPathElement:
+                didClose = false
+                path.addLine(to: points[0])
+            case .curveToBezierPathElement:
+                didClose = false
+                path.addCurve(to: points[2], control1: points[0], control2: points[1])
+            case .closePathBezierPathElement:
+                didClose = true
+                path.closeSubpath()
+            }
+        }
+
+        if (!didClose) {
+            path.closeSubpath()
+        }
+
+        return path
+    }
+    
+    public var lineCap : CGLineCap {
+        switch lineCapStyle {
+        case .buttLineCapStyle:
+            return CGLineCap.butt
+        case .roundLineCapStyle:
+            return CGLineCap.round
+        case .squareLineCapStyle:
+            return CGLineCap.square
+        }
+    }
+    
+    public var lineJoin : CGLineJoin {
+        switch lineJoinStyle {
+        case .bevelLineJoinStyle:
+            return CGLineJoin.bevel
+        case .miterLineJoinStyle:
+            return CGLineJoin.miter
+        case .roundLineJoinStyle:
+            return CGLineJoin.round
+        }
+    }
+    
+    public var targetRect : CGRect {
+        let s = lineWidth + 1
+        return bounds.insetBy(dx: -s, dy: -s)
+    }
+
+    func outlinePath() -> CGPath {
+        return cgPath.copy(strokingWithWidth: max(35, lineWidth), lineCap: lineCap, lineJoin: lineJoin, miterLimit: miterLimit)
+    }
+}
 
 struct Selection {
     var element : NSBezierPath
@@ -18,9 +81,9 @@ struct Selection {
     }
     
     func move(to point: NSPoint) -> NSRect {
-        let oldBounds = element.bounds
+        let oldBounds = element.targetRect
         element.transform(using: AffineTransform(translationByX: point.x - element.bounds.minX + offset.x, byY: point.y - element.bounds.minY + offset.y))
-        return element.bounds.union(oldBounds)
+        return element.targetRect.union(oldBounds)
     }
 }
 
@@ -60,22 +123,32 @@ class Canvas: NSView {
         let path = NSBezierPath(rect: dirtyRect)
         path.fill()
         
-        NSColor.blue.set()
+        NSColor.blue.setFill()
+        NSColor.black.setStroke()
         
         for el in frames[current].elements {
-            if needsToDraw(el.bounds) {
+            if needsToDraw(el.targetRect) {
                 el.fill()
+                el.stroke()
             }
         }
     }
     
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        if let element = frames[current].elements.first(where: { $0.contains(point) }) {
-            selection = Selection(element: element, point: point)
-        } else {
-            selection = nil
+
+        for el in frames[current].elements.reversed() {
+            guard el.targetRect.contains(point) else {
+                continue
+            }
+            // TODO: have list of outlinePaths (tapTargets) so we don't create each time
+            //  Then there won't be two checks, since the shape will be cached
+            if el.contains(point) || el.outlinePath().contains(point) {
+                selection = Selection(element: el, point: point)
+                return
+            }
         }
+        selection = nil
     }
     
     override func mouseDragged(with event: NSEvent) {
@@ -97,15 +170,18 @@ class Canvas: NSView {
     
     override func keyDown(with event: NSEvent) {
         if let key = event.characters?.first {
-            print("key", key)
             switch key {
-            case "c":
-                let center = self.center
-                let s = self.bounds.width / 4
-                let rect = NSRect(x: center.x - s/2, y: center.y - s/2, width: s, height: s)
-                let path = NSBezierPath(ovalIn: rect)
-                frames[current].elements.append(path)
-                setNeedsDisplay(rect)
+            case "1":
+                addShape(createLine())
+                return
+            case "2":
+                addShape(createCircle())
+                return
+            case "3":
+                addShape(createTriangle())
+                return
+            case "4":
+                addShape(createRect())
                 return
             case ".":
                 nextFrame()
@@ -119,8 +195,51 @@ class Canvas: NSView {
                 break
             }
         }
-        
         super.keyDown(with: event)
+    }
+    
+    func centerRect() -> NSRect {
+        let center = self.center
+        let s = self.bounds.width / 4
+        let rect = NSRect(x: center.x - s/2, y: center.y - s/2, width: s, height: s)
+        return rect
+    }
+    
+    func createLine() -> NSBezierPath {
+        let rect = centerRect()
+        let path = NSBezierPath()
+        path.move(to: NSPoint(x: rect.maxX, y: rect.maxY))
+        path.line(to: NSPoint(x: rect.minX, y: rect.minY))
+        return path
+    }
+    
+    func createCircle() -> NSBezierPath {
+        let rect = centerRect()
+        let path = NSBezierPath(ovalIn: rect)
+        return path
+    }
+    
+    func createTriangle() -> NSBezierPath {
+        let rect = centerRect()
+        let s = rect.height
+        let d = s*sqrt(3)/3 // half of the length of equilateral triangle that is of height, rect.height
+        let path = NSBezierPath()
+        path.move(to: NSPoint(x: NSMidX(rect), y: rect.maxY))
+        path.relativeLine(to: NSPoint(x: d, y: -s))
+        path.relativeLine(to: NSPoint(x: -d*2, y: 0))
+        path.close()
+        return path
+    }
+    
+    func createRect() -> NSBezierPath {
+        let rect = centerRect()
+        let path = NSBezierPath(rect: rect)
+        return path
+    }
+    
+    func addShape(_ path: NSBezierPath) {
+        frames[current].elements.append(path)
+        setNeedsDisplay(path.bounds)
     }
     
     func nextFrame() {
