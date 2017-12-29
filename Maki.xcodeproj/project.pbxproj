@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		81D3C0ED1FF579CF0075CB83 /* NSBezierPath+CGPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81D3C0EC1FF579CF0075CB83 /* NSBezierPath+CGPath.swift */; };
 		81F72CFF1FE9C5E8003C1064 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81F72CFE1FE9C5E8003C1064 /* AppDelegate.swift */; };
 		81F72D011FE9C5E8003C1064 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81F72D001FE9C5E8003C1064 /* ViewController.swift */; };
 		81F72D031FE9C5E8003C1064 /* Document.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81F72D021FE9C5E8003C1064 /* Document.swift */; };
@@ -18,6 +19,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		81D3C0EC1FF579CF0075CB83 /* NSBezierPath+CGPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSBezierPath+CGPath.swift"; sourceTree = "<group>"; };
 		81F72CFB1FE9C5E8003C1064 /* Maki.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Maki.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		81F72CFE1FE9C5E8003C1064 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		81F72D001FE9C5E8003C1064 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -71,6 +73,7 @@
 				81F72D101FE9C85F003C1064 /* Canvas.swift */,
 				81F72D121FE9D4F5003C1064 /* CenteringClipView.swift */,
 				81F72D161FE9D9CB003C1064 /* WindowController.swift */,
+				81D3C0EC1FF579CF0075CB83 /* NSBezierPath+CGPath.swift */,
 			);
 			path = Maki;
 			sourceTree = "<group>";
@@ -149,6 +152,7 @@
 				81F72D131FE9D4F5003C1064 /* CenteringClipView.swift in Sources */,
 				81F72D171FE9D9CB003C1064 /* WindowController.swift in Sources */,
 				81F72D011FE9C5E8003C1064 /* ViewController.swift in Sources */,
+				81D3C0ED1FF579CF0075CB83 /* NSBezierPath+CGPath.swift in Sources */,
 				81F72CFF1FE9C5E8003C1064 /* AppDelegate.swift in Sources */,
 				81F72D031FE9C5E8003C1064 /* Document.swift in Sources */,
 				81F72D111FE9C85F003C1064 /* Canvas.swift in Sources */,

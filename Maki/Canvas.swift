@@ -9,110 +9,80 @@
 import Cocoa
 import CoreGraphics
 
-public extension NSBezierPath {
-    public var cgPath : CGPath {
-        let path = CGMutablePath()
-        var didClose = true
-        var points = [CGPoint](repeating: .zero, count: 3)
+struct Symbol {
+    let uuid: String
+    var path: NSBezierPath
+}
 
-        for i in 0 ..< self.elementCount {
-            let type = self.element(at: i, associatedPoints: &points)
-            switch type {
-            case .moveToBezierPathElement:
-                path.move(to: points[0])
-            case .lineToBezierPathElement:
-                didClose = false
-                path.addLine(to: points[0])
-            case .curveToBezierPathElement:
-                didClose = false
-                path.addCurve(to: points[2], control1: points[0], control2: points[1])
-            case .closePathBezierPathElement:
-                didClose = true
-                path.closeSubpath()
-            }
-        }
-
-        if (!didClose) {
-            path.closeSubpath()
-        }
-
-        return path
+extension Symbol {
+    init(_ path: NSBezierPath) {
+        self.init(uuid: UUID().uuidString, path: path)
     }
     
-    public var lineCap : CGLineCap {
-        switch lineCapStyle {
-        case .buttLineCapStyle:
-            return CGLineCap.butt
-        case .roundLineCapStyle:
-            return CGLineCap.round
-        case .squareLineCapStyle:
-            return CGLineCap.square
-        }
+    init(_ symbol: Symbol) {
+        self.init(uuid: symbol.uuid, path: symbol.path.copy() as! NSBezierPath)
     }
-    
-    public var lineJoin : CGLineJoin {
-        switch lineJoinStyle {
-        case .bevelLineJoinStyle:
-            return CGLineJoin.bevel
-        case .miterLineJoinStyle:
-            return CGLineJoin.miter
-        case .roundLineJoinStyle:
-            return CGLineJoin.round
-        }
-    }
-    
-    public var targetRect : CGRect {
-        let s = lineWidth + 1
-        return bounds.insetBy(dx: -s, dy: -s)
-    }
+}
 
-    func outlinePath() -> CGPath {
-        return cgPath.copy(strokingWithWidth: max(35, lineWidth), lineCap: lineCap, lineJoin: lineJoin, miterLimit: miterLimit)
+extension Symbol {
+    func inBounds(_ point: NSPoint) -> Bool {
+        return self.path.targetRect.contains(point)
+    }
+    
+    func inPath(_ point: NSPoint) -> Bool {
+        // TODO: have list of outlinePaths (tapTargets) so we don't create each time
+        //  Then there won't be two checks, since the shape will be cached
+        return self.path.contains(point) || self.path.outlinePath().contains(point)
     }
 }
 
 struct Selection {
-    var element : NSBezierPath
-    var offset : NSPoint
+    var symbol: Symbol
+    var offset: NSPoint
     
-    init(element: NSBezierPath, point: NSPoint) {
-        self.element = element
-        self.offset = NSPoint(x: element.bounds.minX - point.x, y: element.bounds.minY - point.y)
+    init(symbol: Symbol, point: NSPoint) {
+        self.symbol = symbol
+        self.offset = NSPoint(x: symbol.path.bounds.minX - point.x, y: symbol.path.bounds.minY - point.y)
     }
     
     func move(to point: NSPoint) -> NSRect {
-        let oldBounds = element.targetRect
-        element.transform(using: AffineTransform(translationByX: point.x - element.bounds.minX + offset.x, byY: point.y - element.bounds.minY + offset.y))
-        return element.targetRect.union(oldBounds)
+        let bounds = symbol.path.bounds
+        let oldTargetRect = symbol.path.targetRect
+        symbol.path.transform(using: AffineTransform(translationByX: point.x - bounds.minX + offset.x, byY: point.y - bounds.minY + offset.y))
+        return symbol.path.targetRect.union(oldTargetRect)
     }
 }
 
 struct Frame {
-    var elements : [NSBezierPath] = []
+    var elements = [Symbol]()
+}
+
+extension Frame {
+    init(_ frame: Frame?) {
+        if let elements = frame?.elements.map({ return Symbol($0) }) {
+            self.init(elements: elements)
+        } else {
+            self.init()
+        }
+    }
 }
 
 extension Canvas {
-    var center : NSPoint {
-        get {
-            return NSPoint(x: NSMidX(self.bounds), y: NSMidY(self.bounds))
-        }
+    var center: NSPoint {
+        return NSPoint(x: NSMidX(self.bounds), y: NSMidY(self.bounds))
     }
 }
 
 class Canvas: NSView {
-    var frames : [Frame] = [Frame()]
+    var frames = [Frame()]
     var current = 0
-    var selection : Selection?
+    var selection: Selection?
 
     override var preservesContentDuringLiveResize : Bool {
-        get {
-            return true
-        }
+        return true
     }
     override var acceptsFirstResponder: Bool {
-        get {
-            return true
-        }
+        return true
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -127,9 +97,10 @@ class Canvas: NSView {
         NSColor.black.setStroke()
         
         for el in frames[current].elements {
-            if needsToDraw(el.targetRect) {
-                el.fill()
-                el.stroke()
+            let path = el.path
+            if needsToDraw(path.targetRect) {
+                path.fill()
+                path.stroke()
             }
         }
     }
@@ -138,13 +109,12 @@ class Canvas: NSView {
         let point = convert(event.locationInWindow, from: nil)
 
         for el in frames[current].elements.reversed() {
-            guard el.targetRect.contains(point) else {
+            guard el.inBounds(point) else {
                 continue
             }
-            // TODO: have list of outlinePaths (tapTargets) so we don't create each time
-            //  Then there won't be two checks, since the shape will be cached
-            if el.contains(point) || el.outlinePath().contains(point) {
-                selection = Selection(element: el, point: point)
+
+            if el.inPath(point) {
+                selection = Selection(symbol: el, point: point)
                 return
             }
         }
@@ -162,14 +132,17 @@ class Canvas: NSView {
     }
     
     override func mouseUp(with event: NSEvent) {
-        guard let rect = selection?.element.bounds else {
+        guard let rect = selection?.symbol.path.bounds else {
             return
         }
         setNeedsDisplay(rect)
     }
     
     override func keyDown(with event: NSEvent) {
-        if let key = event.characters?.first {
+        let hasOption = event.modifierFlags.contains(.option)
+        let hasCommand = event.modifierFlags.contains(.command)
+
+        if let key = event.charactersIgnoringModifiers?.first {
             switch key {
             case "1":
                 addShape(createLine())
@@ -184,12 +157,34 @@ class Canvas: NSView {
                 addShape(createRect())
                 return
             case ".":
-                nextFrame()
-                print("frame", current)
+                var didChange = false
+
+                if hasOption || hasCommand {
+                    let newFrame = hasOption ? Frame(frames[current]) : Frame()
+                    frames.insert(newFrame, at: current + 1)
+                    didChange = nextFrame()
+                } else {
+                    didChange = nextFrame()
+                }
+
+                if didChange {
+                    print("frame", current)
+                }
                 return
             case ",":
-                prevFrame()
-                print("frame", current)
+                var didChange = false
+
+                if hasOption || hasCommand {
+                    let newFrame = hasOption ? Frame(frames[current]) : Frame()
+                    frames.insert(newFrame, at: current)
+                    setNeedsDisplay(bounds) // already at the newFrame
+                } else {
+                    didChange = prevFrame()
+                }
+
+                if didChange {
+                    print("frame", current)
+                }
                 return
             default:
                 break
@@ -205,21 +200,21 @@ class Canvas: NSView {
         return rect
     }
     
-    func createLine() -> NSBezierPath {
+    func createLine() -> Symbol {
         let rect = centerRect()
         let path = NSBezierPath()
         path.move(to: NSPoint(x: rect.maxX, y: rect.maxY))
         path.line(to: NSPoint(x: rect.minX, y: rect.minY))
-        return path
+        return Symbol(path)
     }
     
-    func createCircle() -> NSBezierPath {
+    func createCircle() -> Symbol {
         let rect = centerRect()
         let path = NSBezierPath(ovalIn: rect)
-        return path
+        return Symbol(path)
     }
     
-    func createTriangle() -> NSBezierPath {
+    func createTriangle() -> Symbol {
         let rect = centerRect()
         let s = rect.height
         let d = s*sqrt(3)/3 // half of the length of equilateral triangle that is of height, rect.height
@@ -228,34 +223,35 @@ class Canvas: NSView {
         path.relativeLine(to: NSPoint(x: d, y: -s))
         path.relativeLine(to: NSPoint(x: -d*2, y: 0))
         path.close()
-        return path
+        return Symbol(path)
     }
     
-    func createRect() -> NSBezierPath {
+    func createRect() -> Symbol {
         let rect = centerRect()
         let path = NSBezierPath(rect: rect)
-        return path
+        return Symbol(path)
     }
     
-    func addShape(_ path: NSBezierPath) {
-        frames[current].elements.append(path)
-        setNeedsDisplay(path.bounds)
+    func addShape(_ el: Symbol) {
+        frames[current].elements.append(el)
+        setNeedsDisplay(el.path.targetRect)
     }
     
-    func nextFrame() {
-        current += 1
-        if (current >= frames.count) {
-            let frame = Frame()
-            frames.append(frame)
+    func nextFrame() -> Bool {
+        if current < frames.count - 1 {
+            current += 1
+            setNeedsDisplay(bounds)
+            return true
         }
-        setNeedsDisplay(bounds)
+        return false
     }
     
-    func prevFrame() {
-        current -= 1
-        if (current < 0) {
-            current = 0
+    func prevFrame() -> Bool {
+        if (current > 0) {
+            current -= 1
+            setNeedsDisplay(bounds)
+            return true
         }
-        setNeedsDisplay(bounds)
+        return false
     }
 }
