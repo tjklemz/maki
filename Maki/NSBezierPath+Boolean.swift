@@ -8,80 +8,57 @@
 
 import Cocoa
 
-extension Array {
-    func splitCurve(at t: CGFloat) -> ([NSPoint], [NSPoint]) {
-        let p = self as! [NSPoint]
-        let (x1, y1) = (p[0].x, p[0].y)
-        let (x2, y2) = (p[1].x, p[1].y)
-        let (x3, y3) = (p[2].x, p[2].y)
-        let (x4, y4) = (p[3].x, p[3].y)
-        
-        let x12 = (x2-x1)*t+x1
-        let y12 = (y2-y1)*t+y1
+public typealias Curve = [NSPoint]
 
-        let x23 = (x3-x2)*t+x2
-        let y23 = (y3-y2)*t+y2
-
-        let x34 = (x4-x3)*t+x3
-        let y34 = (y4-y3)*t+y3
+func point(_ points: Curve, _ t: CGFloat) -> NSPoint {
+    let c0: CGFloat = (1-t)*(1-t)*(1-t)
+    let c1: CGFloat = 3 * (1-t)*(1-t) * t
+    let c2: CGFloat = 3 * (1-t) * t*t
+    let c3: CGFloat = t*t*t
     
-        let x123 = (x23-x12)*t+x12
-        let y123 = (y23-y12)*t+y12
+    return NSPoint(x: c0*points[0].x + c1*points[1].x + c2*points[2].x + c3*points[3].x,
+                   y: c0*points[0].y + c1*points[1].y + c2*points[2].y + c3*points[3].y)
+}
+
+func interp(_ a: NSPoint, _ b: NSPoint, _ t: CGFloat) -> NSPoint {
+    return NSPoint(x: (1-t)*a.x + t*b.x,
+                   y: (1-t)*a.y + t*b.y)
+}
+
+func split(_ points: Curve, t: CGFloat) -> [Curve] {
+    let p1 = interp(points[0], points[1], t)
+    let p2 = interp(points[1], points[2], t)
+    let p3 = interp(points[2], points[3], t)
     
-        let x234 = (x34-x23)*t+x23
-        let y234 = (y34-y23)*t+y23
+    let p4 = interp(p1, p2, t)
+    let p5 = interp(p2, p3, t)
+    let p = interp(p4, p5, t) // the actual point on the curve
 
-        let x1234 = (x234-x123)*t+x123
-        let y1234 = (y234-y123)*t+y123
-        
-        let mid = NSPoint(x: x1234, y: y1234)
-        
-        return (
-            [p[0], NSPoint(x: x12, y: y12), NSPoint(x: x123, y: y123), mid],
-            [mid, NSPoint(x: x234, y: y234), NSPoint(x: x34, y: y34), p[3]]
-        )
-    }
+    return [
+        [points[0], p1, p4, p],
+        [p, p5, p3, points[3]]
+    ]
+}
 
-    func point(at t: CGFloat) -> NSPoint {
-        let p = self as! [NSPoint]
-        let c0: CGFloat = (1-t)*(1-t)*(1-t)
-        let c1: CGFloat = 3 * (1-t)*(1-t) * t
-        let c2: CGFloat = 3 * (1-t) * t*t
-        let c3: CGFloat = t*t*t
+func lineToCurve(_ start: NSPoint, _ end: NSPoint) -> Curve {
+    let t: CGFloat = 1.0 / 3.0
+    return [start, interp(start, end, t), interp(start, end, 1-t), end]
+}
 
-        return NSPoint(x: c0*p[0].x + c1*p[1].x + c2*p[2].x + c3*p[3].x,
-                       y: c0*p[0].y + c1*p[1].y + c2*p[2].y + c3*p[3].y)
-    }
-
-    func rect(_ t: ClosedRange<CGFloat> = (0...1)) -> NSRect {
-        let p = self as! [NSPoint]
-        let split1 = t.lowerBound == 0 ? p : self.splitCurve(at: t.lowerBound).1
-        let split2 = t.upperBound == 1 ? p : self.splitCurve(at: t.upperBound).0
-        let points = [split1[0], split1[1], split2[2], split2[3]]
-        
-        let x1 = points.min(by: { (a, b) -> Bool in a.x < b.x })!.x
-        let y1 = points.min(by: { (a, b) -> Bool in a.y < b.y })!.y
-        let x2 = points.max(by: { (a, b) -> Bool in a.x < b.x })!.x
-        let y2 = points.max(by: { (a, b) -> Bool in a.y < b.y })!.y
-        
-        let w = x2 - x1
-        let h = y2 - y1
-
-        return NSRect(x: x1, y: y1, width: w > 0 ? w : 0.25, height: h > 0 ? h : 0.25)
-    }
+func hull(_ points: Curve) -> NSRect {
+    let x = points.map { return $0.x }
+    let y = points.map { return $0.y }
+    let x_max = x.max()!
+    let x_min = x.min()!
+    let y_max = y.max()!
+    let y_min = y.min()!
+    let w = x_max - x_min
+    let h = y_max - y_min
+    return NSRect(x: x_min, y: y_min, width: w > 0 ? w : 0.25, height: h > 0 ? h : 0.25)
 }
 
 public extension NSBezierPath {
-    func lineToPath(_ start: NSPoint, _ end: NSPoint) -> [NSPoint] {
-        let scale: CGFloat = 0.333333
-        let dy = scale*(end.y - start.y)
-        let dx = scale*(end.x - start.x)
-        let cp1 = NSPoint(x: start.x + dx, y: start.y + dy)
-        let cp2 = NSPoint(x: end.x - dx, y: end.y - dy)
-        return [start, cp1, cp2, end]
-    }
-
-    public func elements() -> [[NSPoint]] {
+    func elements() -> [Curve] {
         var cur = NSPoint()
         var els = [[NSPoint]]()
         let points = NSPointArray.allocate(capacity: 3)
@@ -92,7 +69,7 @@ public extension NSBezierPath {
             case .moveToBezierPathElement:
                 cur = points[0]
             case .lineToBezierPathElement:
-                let path = lineToPath(cur, points[0])
+                let path = lineToCurve(cur, points[0])
                 els.append(path)
                 cur = points[0]
             case .curveToBezierPathElement:
@@ -100,7 +77,7 @@ public extension NSBezierPath {
                 cur = points[0]
             case .closePathBezierPathElement:
                 guard let first = els.first?.first else { break }
-                let path = lineToPath(cur, first)
+                let path = lineToCurve(cur, first)
                 els.append(path)
                 cur = first
             }
@@ -109,31 +86,27 @@ public extension NSBezierPath {
         return els
     }
     
-    func intersections(_ el: [NSPoint], _ otherEl: [NSPoint], t: (ClosedRange<CGFloat>, ClosedRange<CGFloat>) = (0...1, 0...1)) -> [(CGFloat, CGFloat)] {
-        let threshold : CGFloat = 0.1
+    func intersections(_ el: Curve, _ otherEl: Curve) -> Bool {
+        let threshold : CGFloat = 0.01
 
-        let rect = el.rect(t.0)
-        let otherRect = otherEl.rect(t.1)
+        let rect = hull(el)
+        let otherRect = hull(otherEl)
         
-        if !otherRect.intersects(rect) {
-            return []
+        guard otherRect.intersects(rect) else {
+            return false
         }
 
-        if t.0.upperBound - t.0.lowerBound < threshold && t.1.upperBound - t.1.lowerBound < threshold {
-            return [(t.0.lowerBound, t.1.lowerBound)]
+        if rect.width*rect.height + otherRect.width*otherRect.height < threshold {
+            return true
         }
-
-        let t0_l = t.0.lowerBound...((t.0.upperBound - t.0.lowerBound)/2 + t.0.lowerBound)
-        let t1_l = t.1.lowerBound...((t.1.upperBound - t.1.lowerBound)/2 + t.1.lowerBound)
-        let t0_u = (t.0.upperBound - (t.0.upperBound - t.0.lowerBound)/2)...t.0.upperBound
-        let t1_u = (t.1.upperBound - (t.1.upperBound - t.1.lowerBound)/2)...t.1.upperBound
-
-        var intersects = [(CGFloat, CGFloat)]()
-        intersects.append(contentsOf: intersections(el, otherEl, t: (t0_l, t1_l)))
-        intersects.append(contentsOf: intersections(el, otherEl, t: (t0_l, t1_u)))
-        intersects.append(contentsOf: intersections(el, otherEl, t: (t0_u, t1_l)))
-        intersects.append(contentsOf: intersections(el, otherEl, t: (t0_u, t1_u)))
-        return intersects
+        
+        let split1 = split(el, t: 0.5)
+        let split2 = split(otherEl, t: 0.5)
+        
+        return intersections(split1[0], split2[0])
+            || intersections(split1[0], split2[1])
+            || intersections(split1[1], split2[0])
+            || intersections(split1[1], split2[1])
     }
     
     public func intersections(with other: NSBezierPath) {
@@ -141,10 +114,10 @@ public extension NSBezierPath {
         let otherEls = other.elements()
 
         for el in els {
-            let rect = el.rect()
+            let rect = hull(el)
 
             for otherEl in otherEls {
-                let otherRect = otherEl.rect()
+                let otherRect = hull(otherEl)
                 
                 if otherRect.intersects(rect) {
                     let intersects = self.intersections(el, otherEl)
