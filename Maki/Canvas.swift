@@ -156,33 +156,41 @@ class Canvas: NSView {
             case "4":
                 addShape(createRect())
                 return
+            case "u":
+                let els = frames[current].elements
+                let len = els.count
+                guard len > 1 else { return }
+                let top = els[len - 1]
+                let bottom = els[len - 2]
+                top.path.intersections(with: bottom.path)
+                return
             case ".":
-                var didChange = false
+                var didChangeFrame = false
 
                 if hasOption || hasCommand {
                     let newFrame = hasOption ? Frame(frames[current]) : Frame()
                     frames.insert(newFrame, at: current + 1)
-                    didChange = nextFrame()
+                    didChangeFrame = nextFrame()
                 } else {
-                    didChange = nextFrame()
+                    didChangeFrame = nextFrame()
                 }
 
-                if didChange {
+                if didChangeFrame {
                     print("frame", current)
                 }
                 return
             case ",":
-                var didChange = false
+                var didChangeFrame = false
 
                 if hasOption || hasCommand {
                     let newFrame = hasOption ? Frame(frames[current]) : Frame()
                     frames.insert(newFrame, at: current)
                     setNeedsDisplay(bounds) // already at the newFrame
                 } else {
-                    didChange = prevFrame()
+                    didChangeFrame = prevFrame()
                 }
 
-                if didChange {
+                if didChangeFrame {
                     print("frame", current)
                 }
                 return
@@ -217,7 +225,7 @@ class Canvas: NSView {
     func createTriangle() -> Symbol {
         let rect = centerRect()
         let s = rect.height
-        let d = s*sqrt(3)/3 // half of the length of equilateral triangle that is of height, rect.height
+        let d = s*sqrt(3)/3 // half of the length of equilateral triangle that is of height rect.height
         let path = NSBezierPath()
         path.move(to: NSPoint(x: NSMidX(rect), y: rect.maxY))
         path.relativeLine(to: NSPoint(x: d, y: -s))
