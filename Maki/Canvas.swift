@@ -169,22 +169,15 @@ class Canvas: NSView {
                 addShape(createRect())
                 return
             case "t":
-                let shape = createCircle()
-                let elements = shape.path.elements()
-                for el in elements {
-                    let shape1 = NSBezierPath()
-                    shape1.move(to: el[0])
-                    shape1.curve(to: el[3], controlPoint1: el[1], controlPoint2: el[2])
-                    addShape(Symbol(shape1))
-//                    let split1 = split(el, t: 0.25)
-//                    let shape1 = NSBezierPath()
-//                    shape1.move(to: split1[0][0])
-//                    shape1.curve(to: split1[0][3], controlPoint1: split1[0][1], controlPoint2: split1[0][2])
-//                    addShape(Symbol(shape1))
-//                    let shape2 = NSBezierPath()
-//                    shape2.move(to: split1[1][0])
-//                    shape2.curve(to: split1[1][3], controlPoint1: split1[1][1], controlPoint2: split1[1][2])
-//                    addShape(Symbol(shape2))
+                let t: [CGFloat] = [1/6.0, 2/6.0, 3/6.0, 4/6.0, 5/6.0]
+                print("t", t)
+                let el = createCircle().path.elements()[0]
+                let splits = split(el, t: t)
+                for path in splits {
+                    let shape = NSBezierPath()
+                    shape.move(to: path[0])
+                    shape.curve(to: path[3], controlPoint1: path[1], controlPoint2: path[2])
+                    addShape(Symbol(shape))
                 }
                 return
             case "u":
@@ -249,18 +242,6 @@ class Canvas: NSView {
     
     func createCircle() -> Symbol {
         let rect = centerRect()
-//        let r = min(rect.width, rect.height) / 2
-//        let c: CGFloat = 0.551915024494 // curve constraint
-//        let origin = NSPoint(x: rect.origin.x + rect.width / 2, y: rect.origin.y + rect.height / 2)
-//        let path = NSBezierPath()
-//        path.move(to: NSPoint(x: 0, y: 1))
-//        path.curve(to: NSPoint(x: 1, y: 0), controlPoint1: NSPoint(x: c, y: 1), controlPoint2: NSPoint(x: 1, y: c))
-//        path.curve(to: NSPoint(x: 0, y: -1), controlPoint1: NSPoint(x: 1, y: -c), controlPoint2: NSPoint(x: c, y: -1))
-//        path.curve(to: NSPoint(x: -1, y: 0), controlPoint1: NSPoint(x: -c, y: -1), controlPoint2: NSPoint(x: -1, y: -c))
-//        path.curve(to: NSPoint(x: 0, y: 1), controlPoint1: NSPoint(x: -1, y: c), controlPoint2: NSPoint(x: -c, y: 1))
-//
-//        path.transform(using: AffineTransform(scale: r))
-//        path.transform(using: AffineTransform(translationByX: origin.x, byY: origin.y))
         let path = NSBezierPath(ovalIn: rect)
         return Symbol(path)
     }

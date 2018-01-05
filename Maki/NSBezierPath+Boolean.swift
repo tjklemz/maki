@@ -57,6 +57,30 @@ func split(_ points: Curve, t: CGFloat) -> [Curve] {
     ]
 }
 
+func split(_ points: Curve, t: [CGFloat]) -> [Curve] {
+    let u = split(t: t)
+    var parts = [Curve]()
+    var el = points
+    
+    for s in u {
+        let splits = split(el, t: s)
+        parts.append(splits[0])
+        el = splits[1]
+    }
+    parts.append(el)
+    return parts
+}
+
+func split(t: [CGFloat]) -> [CGFloat] {
+    var u = t
+
+    for i in 1..<t.count {
+        u[i] = (t[i] - t[i-1])/(1 - t[i-1])
+    }
+    
+    return u
+}
+
 func lineToCurve(_ start: NSPoint, _ end: NSPoint) -> Curve {
     let t: CGFloat = 1.0 / 3.0
     return [start, interp(start, end, t), interp(start, end, 1-t), end]
