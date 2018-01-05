@@ -77,7 +77,7 @@ func hull(_ points: Curve) -> NSRect {
 public extension NSBezierPath {
     func elements() -> [Curve] {
         var cur = NSPoint()
-        var els = [[NSPoint]]()
+        var els = [Curve]()
         let points = NSPointArray.allocate(capacity: 3)
 
         for i in 0..<self.elementCount {
@@ -104,7 +104,7 @@ public extension NSBezierPath {
     }
     
     func intersections(_ el: Curve, _ otherEl: Curve, t: (ClosedRange<CGFloat>, ClosedRange<CGFloat>) = (0...1, 0...1)) -> [(ClosedRange<CGFloat>, ClosedRange<CGFloat>)] {
-        let threshold : CGFloat = 0.0001
+        let threshold : CGFloat = 0.000001
 
         let rect = hull(el)
         let otherRect = hull(otherEl)
@@ -139,7 +139,7 @@ public extension NSBezierPath {
     public func intersections(with other: NSBezierPath) -> [NSPoint] {
         let els = self.elements()
         let otherEls = other.elements()
-        let mult: CGFloat = 1000
+        let mult: CGFloat = 100
         var inters = [NSPoint]()
 
         for el in els {

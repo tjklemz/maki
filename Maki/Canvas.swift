@@ -112,7 +112,7 @@ class Canvas: NSView {
         NSColor.red.setStroke()
         
         for inter in intersections {
-            let path = NSBezierPath(ovalIn: NSRect(origin: inter, size: CGSize(width: 10, height: 10)))
+            let path = NSBezierPath(ovalIn: NSRect(origin: NSPoint(x: inter.x - 5, y: inter.y - 5), size: CGSize(width: 10, height: 10)))
             path.stroke()
         }
     }
@@ -167,6 +167,25 @@ class Canvas: NSView {
                 return
             case "4":
                 addShape(createRect())
+                return
+            case "t":
+                let shape = createCircle()
+                let elements = shape.path.elements()
+                for el in elements {
+                    let shape1 = NSBezierPath()
+                    shape1.move(to: el[0])
+                    shape1.curve(to: el[3], controlPoint1: el[1], controlPoint2: el[2])
+                    addShape(Symbol(shape1))
+//                    let split1 = split(el, t: 0.25)
+//                    let shape1 = NSBezierPath()
+//                    shape1.move(to: split1[0][0])
+//                    shape1.curve(to: split1[0][3], controlPoint1: split1[0][1], controlPoint2: split1[0][2])
+//                    addShape(Symbol(shape1))
+//                    let shape2 = NSBezierPath()
+//                    shape2.move(to: split1[1][0])
+//                    shape2.curve(to: split1[1][3], controlPoint1: split1[1][1], controlPoint2: split1[1][2])
+//                    addShape(Symbol(shape2))
+                }
                 return
             case "u":
                 let els = frames[current].elements

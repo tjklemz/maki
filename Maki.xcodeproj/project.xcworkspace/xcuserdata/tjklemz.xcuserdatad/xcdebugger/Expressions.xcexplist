@@ -3,12 +3,44 @@
    version = "1.0">
    <ContextStates>
       <ContextState
+         contextName = "NSBezierPath.intersections(_:_:t:):NSBezierPath+Boolean.swift">
+      </ContextState>
+      <ContextState
+         contextName = "NSBezierPath.elements():NSBezierPath+Boolean.swift">
+         <PersistentStrings>
+            <PersistentString
+               value = "points[1]">
+            </PersistentString>
+            <PersistentString
+               value = "points[4]">
+            </PersistentString>
+            <PersistentString
+               value = "points[2]">
+            </PersistentString>
+            <PersistentString
+               value = "points[0]">
+            </PersistentString>
+            <PersistentString
+               value = "points[3]">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+      <ContextState
+         contextName = "NSBezierPath.intersections(with:):NSBezierPath+Boolean.swift">
+      </ContextState>
+      <ContextState
+         contextName = "Array.splitCurve(at:):NSBezierPath+Boolean.swift">
+      </ContextState>
+      <ContextState
          contextName = "Canvas.keyDown(with:):Canvas.swift">
          <PersistentStrings>
             <PersistentString
                value = "event.characters">
             </PersistentString>
          </PersistentStrings>
+      </ContextState>
+      <ContextState
+         contextName = "Array.rect(_:):NSBezierPath+Boolean.swift">
       </ContextState>
    </ContextStates>
 </VariablesViewState>
