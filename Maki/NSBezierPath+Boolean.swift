@@ -8,6 +8,23 @@
 
 import Cocoa
 
+struct Intersection {
+    let t1: CGFloat
+    let t2: CGFloat
+}
+
+extension Intersection: Equatable {
+    static func ==(lhs: Intersection, rhs: Intersection) -> Bool {
+        return lhs.t1 == rhs.t1 && lhs.t2 == rhs.t2
+    }
+}
+
+extension Intersection: Hashable {
+    public var hashValue: Int {
+        return self.t1.hashValue << (MemoryLayout<CGFloat>.size ^ self.t2.hashValue)
+    }
+}
+
 public typealias Curve = [NSPoint]
 
 func point(_ points: Curve, _ t: CGFloat) -> NSPoint {
@@ -54,7 +71,7 @@ func hull(_ points: Curve) -> NSRect {
     let y_min = y.min()!
     let w = x_max - x_min
     let h = y_max - y_min
-    return NSRect(x: x_min, y: y_min, width: w > 0 ? w : 0.25, height: h > 0 ? h : 0.25)
+    return NSRect(x: x_min, y: y_min, width: w > 0 ? w : 0.00001, height: h > 0 ? h : 0.00001)
 }
 
 public extension NSBezierPath {
@@ -86,46 +103,65 @@ public extension NSBezierPath {
         return els
     }
     
-    func intersections(_ el: Curve, _ otherEl: Curve) -> Bool {
-        let threshold : CGFloat = 0.01
+    func intersections(_ el: Curve, _ otherEl: Curve, t: (ClosedRange<CGFloat>, ClosedRange<CGFloat>) = (0...1, 0...1)) -> [(ClosedRange<CGFloat>, ClosedRange<CGFloat>)] {
+        let threshold : CGFloat = 0.0001
 
         let rect = hull(el)
         let otherRect = hull(otherEl)
         
-        guard otherRect.intersects(rect) else {
-            return false
+        guard rect.intersects(otherRect) else {
+            return []
         }
 
-        if rect.width*rect.height + otherRect.width*otherRect.height < threshold {
-            return true
+        if t.0.upperBound - t.0.lowerBound < threshold && t.1.upperBound - t.1.lowerBound < threshold {
+            return [t]
         }
-        
+
         let split1 = split(el, t: 0.5)
         let split2 = split(otherEl, t: 0.5)
         
-        return intersections(split1[0], split2[0])
-            || intersections(split1[0], split2[1])
-            || intersections(split1[1], split2[0])
-            || intersections(split1[1], split2[1])
+        let t0_d = (t.0.upperBound - t.0.lowerBound)/2
+        let t0_l = t.0.lowerBound...(t.0.lowerBound + t0_d)
+        let t0_u = (t.0.lowerBound + t0_d)...t.0.upperBound
+
+        let t1_d = (t.1.upperBound - t.1.lowerBound)/2
+        let t1_l = t.1.lowerBound...(t.1.lowerBound + t1_d)
+        let t1_u = (t.1.lowerBound + t1_d)...t.1.upperBound
+
+        var inters = [(ClosedRange<CGFloat>, ClosedRange<CGFloat>)]()
+        inters.append(contentsOf: intersections(split1[0], split2[0], t: (t0_l, t1_l) ))
+        inters.append(contentsOf: intersections(split1[0], split2[1], t: (t0_l, t1_u) ))
+        inters.append(contentsOf: intersections(split1[1], split2[0], t: (t0_u, t1_l) ))
+        inters.append(contentsOf: intersections(split1[1], split2[1], t: (t0_u, t1_u) ))
+        return inters
     }
     
-    public func intersections(with other: NSBezierPath) {
+    public func intersections(with other: NSBezierPath) -> [NSPoint] {
         let els = self.elements()
         let otherEls = other.elements()
+        let mult: CGFloat = 1000
+        var inters = [NSPoint]()
 
         for el in els {
             let rect = hull(el)
 
             for otherEl in otherEls {
                 let otherRect = hull(otherEl)
-                
-                if otherRect.intersects(rect) {
-                    let intersects = self.intersections(el, otherEl)
+
+                if rect.intersects(otherRect) {
+                    let intersects = self.intersections(el, otherEl).map({ (inter) -> Intersection in
+                        return Intersection(t1: round(mult*inter.0.lowerBound)/mult, t2: round(mult*inter.1.lowerBound)/mult)
+                    })
                     // have intersections as as (el_t, otherEl_t)
                     // now need to split the curves
-                    print("intersects", intersects)
+                    //print("intersects", Set<Intersection>(intersects))
+                    inters.append(contentsOf: Set<Intersection>(intersects).map({ (inter) -> NSPoint in
+                        return point(el, inter.t1)
+                    }))
                 }
             }
         }
+        print("intersections", inters)
+        return inters
     }
 }

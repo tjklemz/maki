@@ -77,6 +77,11 @@ class Canvas: NSView {
     var frames = [Frame()]
     var current = 0
     var selection: Selection?
+    var intersections = [NSPoint]() {
+        didSet {
+            self.setNeedsDisplay(bounds)
+        }
+    }
 
     override var preservesContentDuringLiveResize : Bool {
         return true
@@ -102,6 +107,13 @@ class Canvas: NSView {
                 path.fill()
                 path.stroke()
             }
+        }
+
+        NSColor.red.setStroke()
+        
+        for inter in intersections {
+            let path = NSBezierPath(ovalIn: NSRect(origin: inter, size: CGSize(width: 10, height: 10)))
+            path.stroke()
         }
     }
     
@@ -162,7 +174,7 @@ class Canvas: NSView {
                 guard len > 1 else { return }
                 let top = els[len - 1]
                 let bottom = els[len - 2]
-                top.path.intersections(with: bottom.path)
+                self.intersections = top.path.intersections(with: bottom.path)
                 return
             case ".":
                 var didChangeFrame = false
