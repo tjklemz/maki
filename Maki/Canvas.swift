@@ -249,7 +249,22 @@ class Canvas: NSView {
     
     func createCircle() -> Symbol {
         let rect = centerRect()
-        let path = NSBezierPath(ovalIn: rect)
+        let r = min(rect.width, rect.height) / 2
+        let c: CGFloat = 0.551915024494 // curve constraint
+        let origin = NSPoint(x: rect.origin.x + rect.width / 2, y: rect.origin.y + rect.height / 2)
+        let path = NSBezierPath()
+        path.move(to: NSPoint(x: 0, y: 1))
+        path.curve(to: NSPoint(x: 1, y: 0), controlPoint1: NSPoint(x: c, y: 1), controlPoint2: NSPoint(x: 1, y: c))
+        path.move(to: NSPoint(x: 1, y: 0))
+        path.curve(to: NSPoint(x: 0, y: -1), controlPoint1: NSPoint(x: 1, y: -c), controlPoint2: NSPoint(x: c, y: -1))
+        path.move(to: NSPoint(x: 0, y: -1))
+        path.curve(to: NSPoint(x: -1, y: 0), controlPoint1: NSPoint(x: -c, y: -1), controlPoint2: NSPoint(x: -1, y: -c))
+        path.move(to: NSPoint(x: -1, y: 0))
+        path.curve(to: NSPoint(x: 0, y: 1), controlPoint1: NSPoint(x: -1, y: c), controlPoint2: NSPoint(x: -c, y: 1))
+
+        path.transform(using: AffineTransform(scale: r))
+        path.transform(using: AffineTransform(translationByX: origin.x, byY: origin.y))
+
         return Symbol(path)
     }
     
