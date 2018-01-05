@@ -58,12 +58,11 @@ func split(_ points: Curve, t: CGFloat) -> [Curve] {
 }
 
 func split(_ points: Curve, t: [CGFloat]) -> [Curve] {
-    let u = split(t: t)
     var parts = [Curve]()
     var el = points
     
-    for s in u {
-        let splits = split(el, t: s)
+    for u in split(t: t) {
+        let splits = split(el, t: u)
         parts.append(splits[0])
         el = splits[1]
     }
@@ -99,7 +98,17 @@ func hull(_ points: Curve) -> NSRect {
 }
 
 public extension NSBezierPath {
-    func elements() -> [Curve] {
+    convenience init?(points: Curve) {
+        guard points.count == 2 || points.count == 4 else {
+            return nil
+        }
+        self.init()
+        let p = points.count == 2 ? lineToCurve(points[0], points[1]) : points
+        self.move(to: p[0])
+        self.curve(to: p[3], controlPoint1: p[1], controlPoint2: p[2])
+    }
+
+    public func elements() -> [Curve] {
         var cur = NSPoint()
         var els = [Curve]()
         let points = NSPointArray.allocate(capacity: 3)

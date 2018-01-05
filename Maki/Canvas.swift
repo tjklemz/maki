@@ -171,13 +171,12 @@ class Canvas: NSView {
             case "t":
                 let t: [CGFloat] = [1/6.0, 2/6.0, 3/6.0, 4/6.0, 5/6.0]
                 print("t", t)
-                let el = createCircle().path.elements()[0]
-                let splits = split(el, t: t)
-                for path in splits {
-                    let shape = NSBezierPath()
-                    shape.move(to: path[0])
-                    shape.curve(to: path[3], controlPoint1: path[1], controlPoint2: path[2])
-                    addShape(Symbol(shape))
+                let els = createCircle().path.elements()
+                for el in els {
+                    for points in split(el, t: t) {
+                        let path = NSBezierPath(points: points)
+                        addShape(Symbol(path!))
+                    }
                 }
                 return
             case "u":
