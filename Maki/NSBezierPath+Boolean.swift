@@ -91,7 +91,7 @@ public extension NSBezierPath {
                 cur = points[0]
             case .curveToBezierPathElement:
                 els.append([cur, points[0], points[1], points[2]])
-                cur = points[0]
+                cur = points[2]
             case .closePathBezierPathElement:
                 guard let first = els.first?.first else { break }
                 let path = lineToCurve(cur, first)
