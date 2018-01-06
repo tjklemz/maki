@@ -185,7 +185,18 @@ class Canvas: NSView {
                 guard len > 1 else { return }
                 let top = els[len - 1]
                 let bottom = els[len - 2]
-                self.intersections = top.path.intersections(with: bottom.path)
+                let start = NSDate()
+                //self.intersections = top.path.intersections(with: bottom.path).points
+                let result = top.path.union(with: bottom.path)
+                let elapsed = start.timeIntervalSinceNow
+                print("elapsed", elapsed)
+                for el in result.elements() {
+                    let path = NSBezierPath(points: el)
+                    addShape(Symbol(path!))
+                }
+                return
+            case "c":
+                self.intersections = []
                 return
             case ".":
                 var didChangeFrame = false
