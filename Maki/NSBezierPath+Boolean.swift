@@ -8,23 +8,6 @@
 
 import Cocoa
 
-struct Intersection {
-    let t1: CGFloat
-    let t2: CGFloat
-}
-
-extension Intersection: Equatable {
-    static func ==(lhs: Intersection, rhs: Intersection) -> Bool {
-        return lhs.t1 == rhs.t1 && lhs.t2 == rhs.t2
-    }
-}
-
-extension Intersection: Hashable {
-    public var hashValue: Int {
-        return self.t1.hashValue << (MemoryLayout<CGFloat>.size ^ self.t2.hashValue)
-    }
-}
-
 extension NSPoint: Hashable {
     public var hashValue: Int {
         return self.x.hashValue << (MemoryLayout<CGFloat>.size ^ self.y.hashValue)
@@ -32,6 +15,7 @@ extension NSPoint: Hashable {
 }
 
 public typealias Curve = [NSPoint]
+public typealias Intersection = (ClosedRange<CGFloat>, ClosedRange<CGFloat>)
 
 func point(_ points: Curve, _ t: CGFloat) -> NSPoint {
     let c0: CGFloat = (1-t)*(1-t)*(1-t)
@@ -142,7 +126,7 @@ public extension NSBezierPath {
         return els
     }
     
-    func intersections(_ el: Curve, _ otherEl: Curve, t: (ClosedRange<CGFloat>, ClosedRange<CGFloat>) = (0...1, 0...1)) -> [(ClosedRange<CGFloat>, ClosedRange<CGFloat>)] {
+    func intersections(_ el: Curve, _ otherEl: Curve, t: Intersection = (0...1, 0...1)) -> [Intersection] {
         let threshold : CGFloat = 0.000001
 
         let rect = hull(el)
@@ -167,12 +151,10 @@ public extension NSBezierPath {
         let t1_l = t.1.lowerBound...(t.1.lowerBound + t1_d)
         let t1_u = (t.1.lowerBound + t1_d)...t.1.upperBound
 
-        var inters = [(ClosedRange<CGFloat>, ClosedRange<CGFloat>)]()
-        inters.append(contentsOf: intersections(split1[0], split2[0], t: (t0_l, t1_l) ))
-        inters.append(contentsOf: intersections(split1[0], split2[1], t: (t0_l, t1_u) ))
-        inters.append(contentsOf: intersections(split1[1], split2[0], t: (t0_u, t1_l) ))
-        inters.append(contentsOf: intersections(split1[1], split2[1], t: (t0_u, t1_u) ))
-        return inters
+        return intersections(split1[0], split2[0], t: (t0_l, t1_l))
+             + intersections(split1[0], split2[1], t: (t0_l, t1_u))
+             + intersections(split1[1], split2[0], t: (t0_u, t1_l))
+             + intersections(split1[1], split2[1], t: (t0_u, t1_u))
     }
     
     public func intersections(with other: NSBezierPath) -> (ours: [Curve], theirs: [Curve], points: [NSPoint]) {
@@ -184,44 +166,38 @@ public extension NSBezierPath {
         var otherElSplits = [Int: Set<CGFloat>]()
 
         for (i, el) in els.enumerated() {
-            let rect = hull(el)
-
             for (j, otherEl) in otherEls.enumerated() {
-                let otherRect = hull(otherEl)
+                let intersects = self.intersections(el, otherEl)
 
-                if rect.intersects(otherRect) {
-                    let intersects = Set<Intersection>(self.intersections(el, otherEl).map({ (inter) -> Intersection in
-                        return Intersection(t1: round(mult*inter.0.lowerBound)/mult,
-                                            t2: round(mult*inter.1.lowerBound)/mult)
-                    }))
+                guard intersects.count > 0 else { continue }
 
-                    if intersects.count > 0 {
-                        points = points.union(intersects.map({ point(el, $0.t1) }))
+                let t1 = Set(intersects.map({ round(mult*$0.0.lowerBound) / mult }))
+                let t2 = Set(intersects.map({ round(mult*$0.1.lowerBound) / mult }))
 
-                        let elSplit = elSplits[i] ?? Set<CGFloat>()
-                        elSplits[i] = elSplit.union(intersects.map { $0.t1 })
+                points = points.union(t1.map({ point(el, $0) }))
 
-                        let otherElSplit = otherElSplits[j] ?? Set<CGFloat>()
-                        otherElSplits[j] = otherElSplit.union(intersects.map { $0.t2 })
-                    }
-                }
+                let elSplit = elSplits[i] ?? Set<CGFloat>()
+                elSplits[i] = elSplit.union(t1)
+
+                let otherElSplit = otherElSplits[j] ?? Set<CGFloat>()
+                otherElSplits[j] = otherElSplit.union(t2)
             }
         }
-        let ours = els.enumerated().flatMap { (arg) -> [Curve] in
-            let (n, el) = arg
-            if let splits = elSplits[n] {
-                return split(el, t: splits.sorted())
+
+        let ours = els.enumerated().flatMap { (n, el) -> [Curve] in
+            guard let splits = elSplits[n] else {
+                return [el]
             }
-            return [el]
+            return split(el, t: splits.sorted())
         }
-        let theirs = otherEls.enumerated().flatMap { (arg) -> [Curve] in
-            let (n, el) = arg
-            if let splits = otherElSplits[n] {
-                return split(el, t: splits.sorted())
+
+        let theirs = otherEls.enumerated().flatMap { (n, el) -> [Curve] in
+            guard let splits = otherElSplits[n] else {
+                return [el]
             }
-            return [el]
+            return split(el, t: splits.sorted())
         }
-        // print("intersections", points)
+
         return (ours: ours, theirs: theirs, points: Array(points))
     }
     
