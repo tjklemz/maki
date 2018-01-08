@@ -127,7 +127,7 @@ public extension NSBezierPath {
     }
     
     func intersections(_ el: Curve, _ otherEl: Curve, t: Intersection = (0...1, 0...1)) -> [Intersection] {
-        let threshold : CGFloat = 0.000001
+        let threshold : CGFloat = 0.0001
 
         let rect = hull(el)
         let otherRect = hull(otherEl)
@@ -160,7 +160,7 @@ public extension NSBezierPath {
     public func intersections(with other: NSBezierPath) -> (ours: [Curve], theirs: [Curve], points: [NSPoint]) {
         let els = self.elements()
         let otherEls = other.elements()
-        let mult: CGFloat = 100
+        let mult: CGFloat = 1000
         var points = Set<NSPoint>()
         var elSplits = [Int: Set<CGFloat>]()
         var otherElSplits = [Int: Set<CGFloat>]()
@@ -204,10 +204,40 @@ public extension NSBezierPath {
     public func union(with other: NSBezierPath) -> NSBezierPath {
         let (ours, theirs, _) = intersections(with: other)
         print("ours", ours.count, "theirs", theirs.count)
-        let parts = ours.filter { !other.contains(point($0, 0.5))} + theirs.filter { !self.contains(point($0, 0.5))}
-        let path = NSBezierPath()
+        var parts = ours.filter{ !other.contains(point($0, 0.5)) } + theirs.filter { !self.contains(point($0, 0.5)) }
         for part in parts {
-            path.append(NSBezierPath(points: part)!)
+            print("first", part[0], "last", part[3])
+        }
+        let path = NSBezierPath()
+        var first = parts.removeFirst()
+        path.move(to: first[0])
+        path.curve(to: first[3], controlPoint1: first[1], controlPoint2: first[2])
+        var cur = first[3]
+        while parts.count > 0 {
+            var found = false
+            for i in 0..<parts.count {
+                let part = parts[i]
+                let start = part[0]
+                let end = part[3]
+
+                if abs(start.x - cur.x) < 1 && abs(start.y - cur.y) < 1 {
+                    path.curve(to: end, controlPoint1: part[1], controlPoint2: part[2])
+                    cur = end
+                    parts.remove(at: i)
+                    found = true
+                    break
+                }
+                if abs(end.x - cur.x) < 1 && abs(end.y - cur.y) < 1 {
+                    path.curve(to: start, controlPoint1: part[2], controlPoint2: part[1])
+                    cur = start
+                    parts.remove(at: i)
+                    found = true
+                    break
+                }
+            }
+            if !found {
+                break
+            }
         }
         return path
     }

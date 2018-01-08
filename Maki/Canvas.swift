@@ -190,10 +190,11 @@ class Canvas: NSView {
                 let result = top.path.union(with: bottom.path)
                 let elapsed = start.timeIntervalSinceNow
                 print("elapsed", elapsed)
-                for el in result.elements() {
-                    let path = NSBezierPath(points: el)
-                    addShape(Symbol(path!))
-                }
+//                for el in result.elements() {
+//                    let path = NSBezierPath(points: el)
+//                    addShape(Symbol(path!))
+//                }
+                addShape(Symbol(result))
                 return
             case "c":
                 self.intersections = []
