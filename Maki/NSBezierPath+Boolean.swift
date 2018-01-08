@@ -14,6 +14,12 @@ extension NSPoint: Hashable {
     }
 }
 
+extension NSPoint {
+    public func isCloseTo(_ other: NSPoint) -> Bool {
+        return abs(x - other.x) < 1 && abs(y - other.y) < 1
+    }
+}
+
 public typealias Curve = [NSPoint]
 public typealias Intersection = (ClosedRange<CGFloat>, ClosedRange<CGFloat>)
 
@@ -87,6 +93,16 @@ func hull(_ points: Curve) -> NSRect {
     return NSRect(x: x_min, y: y_min, width: w > 0 ? w : 0.00001, height: h > 0 ? h : 0.00001)
 }
 
+func direction(_ points: Curve, point: NSPoint) -> Curve? {
+    if points[0].isCloseTo(point) {
+        return points
+    }
+    if points[3].isCloseTo(point) {
+        return points.reversed()
+    }
+    return nil
+}
+
 public extension NSBezierPath {
     convenience init?(points: Curve) {
         guard points.count == 2 || points.count == 4 else {
@@ -96,6 +112,39 @@ public extension NSBezierPath {
         let p = points.count == 2 ? lineToCurve(points[0], points[1]) : points
         self.move(to: p[0])
         self.curve(to: p[3], controlPoint1: p[1], controlPoint2: p[2])
+    }
+
+    convenience init(parts: [Curve]) {
+        self.init()
+
+        // debug
+        for part in parts {
+            print("first", part[0], "last", part[3])
+        }
+
+        var els = parts
+
+        var first = els.removeFirst()
+        self.move(to: first[0])
+        self.curve(to: first[3], controlPoint1: first[1], controlPoint2: first[2])
+
+        var cur = first[3]
+
+        while parts.count > 0 {
+            var found = false
+            for i in 0..<els.count {
+                if let el = direction(els[i], point: cur) {
+                    self.curve(to: el[3], controlPoint1: el[1], controlPoint2: el[2])
+                    cur = el[3]
+                    els.remove(at: i)
+                    found = true
+                    break
+                }
+            }
+            if !found {
+                break
+            }
+        }
     }
 
     public func elements() -> [Curve] {
@@ -198,47 +247,15 @@ public extension NSBezierPath {
             return split(el, t: splits.sorted())
         }
 
+        // debug
+        print("ours", ours.count, "theirs", theirs.count)
+
         return (ours: ours, theirs: theirs, points: Array(points))
     }
     
     public func union(with other: NSBezierPath) -> NSBezierPath {
         let (ours, theirs, _) = intersections(with: other)
-        print("ours", ours.count, "theirs", theirs.count)
-        var parts = ours.filter{ !other.contains(point($0, 0.5)) } + theirs.filter { !self.contains(point($0, 0.5)) }
-        for part in parts {
-            print("first", part[0], "last", part[3])
-        }
-        let path = NSBezierPath()
-        var first = parts.removeFirst()
-        path.move(to: first[0])
-        path.curve(to: first[3], controlPoint1: first[1], controlPoint2: first[2])
-        var cur = first[3]
-        while parts.count > 0 {
-            var found = false
-            for i in 0..<parts.count {
-                let part = parts[i]
-                let start = part[0]
-                let end = part[3]
-
-                if abs(start.x - cur.x) < 1 && abs(start.y - cur.y) < 1 {
-                    path.curve(to: end, controlPoint1: part[1], controlPoint2: part[2])
-                    cur = end
-                    parts.remove(at: i)
-                    found = true
-                    break
-                }
-                if abs(end.x - cur.x) < 1 && abs(end.y - cur.y) < 1 {
-                    path.curve(to: start, controlPoint1: part[2], controlPoint2: part[1])
-                    cur = start
-                    parts.remove(at: i)
-                    found = true
-                    break
-                }
-            }
-            if !found {
-                break
-            }
-        }
-        return path
+        let parts = ours.filter{ !other.contains(point($0, 0.5)) } + theirs.filter { !self.contains(point($0, 0.5)) }
+        return NSBezierPath(parts: parts)
     }
 }

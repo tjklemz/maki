@@ -10,11 +10,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "Maki/NSBezierPath+Boolean.swift"
-            timestampString = "537139067.613506"
+            timestampString = "537146834.487191"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "140"
-            endingLineNumber = "140"
+            startingLineNumber = "189"
+            endingLineNumber = "189"
             landmarkName = "intersections(_:_:t:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -26,11 +26,11 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "Maki/NSBezierPath+Boolean.swift"
-            timestampString = "537139067.6149991"
+            timestampString = "537146834.48815"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "143"
-            endingLineNumber = "143"
+            startingLineNumber = "192"
+            endingLineNumber = "192"
             landmarkName = "intersections(_:_:t:)"
             landmarkType = "7">
          </BreakpointContent>
