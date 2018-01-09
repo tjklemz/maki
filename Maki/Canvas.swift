@@ -196,6 +196,32 @@ class Canvas: NSView {
 //                }
                 addShape(Symbol(result))
                 return
+            case "i":
+                let els = frames[current].elements
+                let len = els.count
+                guard len > 1 else { return }
+                let top = els[len - 1]
+                let bottom = els[len - 2]
+                let start = NSDate()
+                //self.intersections = top.path.intersections(with: bottom.path).points
+                let result = top.path.intersect(with: bottom.path)
+                let elapsed = start.timeIntervalSinceNow
+                print("elapsed", elapsed)
+                addShape(Symbol(result))
+                return
+            case "d":
+                let els = frames[current].elements
+                let len = els.count
+                guard len > 1 else { return }
+                let top = els[len - 1]
+                let bottom = els[len - 2]
+                let start = NSDate()
+                //self.intersections = top.path.intersections(with: bottom.path).points
+                let result = top.path.difference(with: bottom.path)
+                let elapsed = start.timeIntervalSinceNow
+                print("elapsed", elapsed)
+                addShape(Symbol(result))
+                return
             case "c":
                 self.intersections = []
                 return

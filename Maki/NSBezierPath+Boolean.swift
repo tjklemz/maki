@@ -174,7 +174,7 @@ public extension NSBezierPath {
         
         return els
     }
-    
+
     func intersections(_ el: Curve, _ otherEl: Curve, t: Intersection = (0...1, 0...1)) -> [Intersection] {
         let threshold : CGFloat = 0.0001
 
@@ -205,7 +205,7 @@ public extension NSBezierPath {
              + intersections(split1[1], split2[0], t: (t0_u, t1_l))
              + intersections(split1[1], split2[1], t: (t0_u, t1_u))
     }
-    
+
     public func intersections(with other: NSBezierPath) -> (ours: [Curve], theirs: [Curve], points: [NSPoint]) {
         let els = self.elements()
         let otherEls = other.elements()
@@ -252,10 +252,22 @@ public extension NSBezierPath {
 
         return (ours: ours, theirs: theirs, points: Array(points))
     }
-    
+
     public func union(with other: NSBezierPath) -> NSBezierPath {
         let (ours, theirs, _) = intersections(with: other)
         let parts = ours.filter{ !other.contains(point($0, 0.5)) } + theirs.filter { !self.contains(point($0, 0.5)) }
+        return NSBezierPath(parts: parts)
+    }
+
+    public func intersect(with other: NSBezierPath) -> NSBezierPath {
+        let (ours, theirs, _) = intersections(with: other)
+        let parts = ours.filter{ other.contains(point($0, 0.5)) } + theirs.filter { self.contains(point($0, 0.5)) }
+        return NSBezierPath(parts: parts)
+    }
+
+    public func difference(with other: NSBezierPath) -> NSBezierPath {
+        let (ours, theirs, _) = intersections(with: other)
+        let parts = ours.filter{ other.contains(point($0, 0.5)) } + theirs.filter { !self.contains(point($0, 0.5)) }
         return NSBezierPath(parts: parts)
     }
 }
