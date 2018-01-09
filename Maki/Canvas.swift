@@ -179,7 +179,7 @@ class Canvas: NSView {
                     }
                 }
                 return
-            case "u":
+            case "u", "i", "d", "x":
                 let els = frames[current].elements
                 let len = els.count
                 guard len > 1 else { return }
@@ -187,40 +187,26 @@ class Canvas: NSView {
                 let bottom = els[len - 2]
                 let start = NSDate()
                 //self.intersections = top.path.intersections(with: bottom.path).points
-                let result = top.path.union(with: bottom.path)
+                let result: NSBezierPath = {
+                    switch key {
+                    case "u":
+                        return top.path.union(with: bottom.path)
+                    case "i":
+                        return top.path.intersect(with: bottom.path)
+                    case "d":
+                        return top.path.difference(with: bottom.path)
+                    case "x":
+                        return top.path.xor(with: bottom.path)
+                    default:
+                        return NSBezierPath()
+                    }
+                }()
                 let elapsed = start.timeIntervalSinceNow
                 print("elapsed", elapsed)
-//                for el in result.elements() {
-//                    let path = NSBezierPath(points: el)
-//                    addShape(Symbol(path!))
-//                }
-                addShape(Symbol(result))
-                return
-            case "i":
-                let els = frames[current].elements
-                let len = els.count
-                guard len > 1 else { return }
-                let top = els[len - 1]
-                let bottom = els[len - 2]
-                let start = NSDate()
-                //self.intersections = top.path.intersections(with: bottom.path).points
-                let result = top.path.intersect(with: bottom.path)
-                let elapsed = start.timeIntervalSinceNow
-                print("elapsed", elapsed)
-                addShape(Symbol(result))
-                return
-            case "d":
-                let els = frames[current].elements
-                let len = els.count
-                guard len > 1 else { return }
-                let top = els[len - 1]
-                let bottom = els[len - 2]
-                let start = NSDate()
-                //self.intersections = top.path.intersections(with: bottom.path).points
-                let result = top.path.difference(with: bottom.path)
-                let elapsed = start.timeIntervalSinceNow
-                print("elapsed", elapsed)
-                addShape(Symbol(result))
+                if !result.isEmpty {
+                    removeLast(2)
+                    addShape(Symbol(result))
+                }
                 return
             case "c":
                 self.intersections = []
@@ -297,13 +283,26 @@ class Canvas: NSView {
     
     func createRect() -> Symbol {
         let rect = centerRect()
-        let path = NSBezierPath(rect: rect)
+        let transform = CGAffineTransform(scaleX: 2, y: 2)
+        let newRect = rect.applying(transform)
+        let path = NSBezierPath(rect: newRect)
         return Symbol(path)
     }
     
     func addShape(_ el: Symbol) {
         frames[current].elements.append(el)
         setNeedsDisplay(el.path.targetRect)
+    }
+    
+    func removeLast(_ n: Int = 1) {
+        var rect = NSRect()
+        var k = n
+        while k > 0 && frames[current].elements.count > 0 {
+            let shape = frames[current].elements.removeLast()
+            rect = rect.union(shape.path.targetRect)
+            k -= 1
+        }
+        setNeedsDisplay(rect)
     }
     
     func nextFrame() -> Bool {

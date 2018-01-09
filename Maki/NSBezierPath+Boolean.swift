@@ -123,6 +123,10 @@ public extension NSBezierPath {
         }
 
         var els = parts
+        
+        guard els.count > 0 else {
+            return
+        }
 
         var first = els.removeFirst()
         self.move(to: first[0])
@@ -130,7 +134,7 @@ public extension NSBezierPath {
 
         var cur = first[3]
 
-        while parts.count > 0 {
+        while els.count > 0 {
             var found = false
             for i in 0..<els.count {
                 if let el = direction(els[i], point: cur) {
@@ -141,7 +145,11 @@ public extension NSBezierPath {
                     break
                 }
             }
-            if !found {
+            if !found && els.count > 0 {
+                let i = Int(arc4random_uniform(UInt32(els.count)))
+                cur = els[i][0]
+                self.move(to: cur)
+            } else if !found {
                 break
             }
         }
@@ -269,5 +277,11 @@ public extension NSBezierPath {
         let (ours, theirs, _) = intersections(with: other)
         let parts = ours.filter{ other.contains(point($0, 0.5)) } + theirs.filter { !self.contains(point($0, 0.5)) }
         return NSBezierPath(parts: parts)
+    }
+    
+    public func xor(with other: NSBezierPath) -> NSBezierPath {
+        let union = self.union(with: other)
+        let intersect = self.intersect(with: other)
+        return intersect.difference(with: union)
     }
 }
