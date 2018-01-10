@@ -168,6 +168,10 @@ class Canvas: NSView {
             case "4":
                 addShape(createRect())
                 return
+            case "q":
+                let path = NSBezierPath(rect: self.bounds)
+                addShape(Symbol(path))
+                return
             case "t":
                 let t: [CGFloat] = [1/6.0, 2/6.0, 3/6.0, 4/6.0, 5/6.0]
                 print("t", t)
@@ -283,7 +287,7 @@ class Canvas: NSView {
     
     func createRect() -> Symbol {
         let rect = centerRect()
-        let path = NSBezierPath(rect: NSRect(origin: rect.origin, size: CGSize(width: rect.size.width*4, height: rect.size.height*4)))
+        let path = NSBezierPath(rect: rect)
         return Symbol(path)
     }
     

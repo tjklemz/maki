@@ -114,6 +114,8 @@ func sign(_ parts: [Curve]) -> Int {
         sum += (x2 - x1)*(y2 + y1)
     }
     
+    // print("sum", sum)
+    
     return sum >= 0 ? 1 : -1
 }
 
@@ -189,6 +191,8 @@ public extension NSBezierPath {
                 self.curve(to: el[3], controlPoint1: el[1], controlPoint2: el[2])
             }
         }
+        // path might contain holes, so use even-odd algorithm for filling
+        self.windingRule = .evenOddWindingRule
     }
 
     public func elements() -> [Curve] {
