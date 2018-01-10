@@ -283,9 +283,7 @@ class Canvas: NSView {
     
     func createRect() -> Symbol {
         let rect = centerRect()
-        let transform = CGAffineTransform(scaleX: 2, y: 2)
-        let newRect = rect.applying(transform)
-        let path = NSBezierPath(rect: newRect)
+        let path = NSBezierPath(rect: NSRect(origin: rect.origin, size: CGSize(width: rect.size.width*4, height: rect.size.height*4)))
         return Symbol(path)
     }
     
