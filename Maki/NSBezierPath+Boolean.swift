@@ -103,22 +103,6 @@ func direction(_ points: Curve, point: NSPoint) -> Curve? {
     return nil
 }
 
-func sign(_ parts: [Curve]) -> Int {
-    var sum: CGFloat = 0
-    let points = parts.map { $0[0] } + [parts[parts.count-1][3]]
-    for i in 0..<points.count-1 {
-        let x1 = points[i].x
-        let y1 = points[i].y
-        let x2 = points[i+1].x
-        let y2 = points[i+1].y
-        sum += (x2 - x1)*(y2 + y1)
-    }
-    
-    // print("sum", sum)
-    
-    return sum >= 0 ? 1 : -1
-}
-
 public extension NSBezierPath {
     convenience init?(points: Curve) {
         guard points.count == 2 || points.count == 4 else {
@@ -137,15 +121,10 @@ public extension NSBezierPath {
 
         guard els.count > 0 else { return }
 
-        var ordered = [[Curve]]()
-        var k = 0
-        ordered.append([])
-
         var first = els.removeFirst()
-        ordered[k].append(first)
-        //self.move(to: first[0])
-        //self.curve(to: first[3], controlPoint1: first[1], controlPoint2: first[2])
-
+        var ordered: [[Curve]] = [[first]]
+        var k = 0
+        var tries = 0
         var cur = first[3]
 
         while els.count > 0 {
@@ -153,35 +132,22 @@ public extension NSBezierPath {
             for i in 0..<els.count {
                 if let el = direction(els[i], point: cur) {
                     ordered[k].append(el)
-                    //self.curve(to: el[3], controlPoint1: el[1], controlPoint2: el[2])
                     cur = el[3]
                     els.remove(at: i)
+                    tries = 0
                     found = true
                     break
                 }
             }
-            if !found && els.count > 0 {
-                let i = Int(arc4random_uniform(UInt32(els.count)))
-                cur = els[i][0]
-                //self.move(to: cur)
-                if ordered[k].count > 1 {
+            if !found && els.count > 0 && tries < els.count {
+                cur = els[tries][0]
+                tries += 1
+                if ordered[k].count != 0 {
                     k += 1
                     ordered.append([])
                 }
             } else if !found {
                 break
-            }
-        }
-        
-        var s = sign(ordered[0])
-        
-        for i in 1..<ordered.count {
-            let newS = sign(ordered[i])
-            //print("newS", newS, "s", s)
-            if newS == s {
-                ordered[i] = ordered[i].reversed().map { el -> Curve in el.reversed() }
-            } else {
-                s = newS*(-1)
             }
         }
         
