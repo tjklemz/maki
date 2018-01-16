@@ -172,6 +172,33 @@ class Canvas: NSView {
                 let path = NSBezierPath(rect: self.bounds)
                 addShape(Symbol(path))
                 return
+            case "m", "M":
+                if frames[current].elements.count == 0 {
+                    addShape(createCircle())
+                }
+                let els = frames[current].elements
+                let top = els[els.count - 1]
+                let parts = top.path.elements()
+                let oldBounds = top.path.bounds
+                let maxY = oldBounds.maxY
+                let minY = oldBounds.minY
+                let maxX = oldBounds.maxX
+                let minX = oldBounds.minX
+                let midX = (maxX - minX)/2
+                let h = maxY - minY
+                let otherSign: CGFloat = key == "M" ? -1 : 1
+                let newParts = parts.map { el -> Curve in
+                    return el.map { p in
+                        let perY = (p.y - minY)/h
+                        let perX = (midX - (p.x - minX))/midX
+                        let sign: CGFloat = perX >= 0 ? 1 : -1
+                        return NSPoint(x: p.x + otherSign*sign*(exp(abs(perX) - 1)), y: p.y + otherSign*2*(exp(perY) - 1))
+                    }
+                }
+                frames[current].elements[frames[current].elements.count - 1] = Symbol(uuid: top.uuid, path: NSBezierPath(parts: newParts))
+                //top.path = NSBezierPath(parts: newParts)
+                setNeedsDisplay(self.bounds)
+                return
             case "t":
                 let t: [CGFloat] = [1/6.0, 2/6.0, 3/6.0, 4/6.0, 5/6.0]
                 print("t", t)
