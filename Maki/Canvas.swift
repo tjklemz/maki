@@ -106,6 +106,9 @@ class Canvas: NSView {
             if needsToDraw(path.targetRect) {
                 path.fill()
                 path.stroke()
+                NSColor.systemPink.setStroke()
+                NSBezierPath.stroke(path.bounds)
+                NSBezierPath.stroke(NSRect(x: path.bounds.origin.x + path.bounds.width / 2 - 2, y: path.bounds.origin.y + path.bounds.height / 2 - 2, width: 4, height: 4))
             }
         }
 
@@ -177,26 +180,25 @@ class Canvas: NSView {
                     addShape(createCircle())
                 }
                 let els = frames[current].elements
-                let top = els[els.count - 1]
-                let parts = top.path.elements()
-                let oldBounds = top.path.bounds
-                let maxY = oldBounds.maxY
-                let minY = oldBounds.minY
-                let maxX = oldBounds.maxX
-                let minX = oldBounds.minX
-                let midX = (maxX - minX)/2
-                let h = maxY - minY
-                let otherSign: CGFloat = key == "M" ? -1 : 1
-                let newParts = parts.map { el -> Curve in
-                    return el.map { p in
-                        let perY = (p.y - minY)/h
-                        let perX = (midX - (p.x - minX))/midX
-                        let sign: CGFloat = perX >= 0 ? 1 : -1
-                        return NSPoint(x: p.x + otherSign*sign*(exp(abs(perX) - 1)), y: p.y + otherSign*2*(exp(perY) - 1))
-                    }
-                }
-                frames[current].elements[frames[current].elements.count - 1] = Symbol(uuid: top.uuid, path: NSBezierPath(parts: newParts))
-                //top.path = NSBezierPath(parts: newParts)
+                let last = els.count - 1
+                let top = els[last]
+                let newPath = top.path
+                let angle: CGFloat = 45
+                let s: CGFloat = 0.9
+                let scale: CGFloat = key == "M" ? 1 / s : s
+
+                let x = NSMidX(newPath.bounds)
+                let y = NSMidY(newPath.bounds)
+                newPath.transform(using: AffineTransform(translationByX: -x, byY: -y))
+
+                var transform = AffineTransform()
+                transform.rotate(byDegrees: angle)
+                transform.scale(x: 1 / scale, y: scale)
+                transform.rotate(byDegrees: -angle)
+                newPath.transform(using: transform)
+
+                newPath.transform(using: AffineTransform(translationByX: x, byY: y))
+                frames[current].elements[last] = Symbol(uuid: top.uuid, path: newPath)
                 setNeedsDisplay(self.bounds)
                 return
             case "t":
