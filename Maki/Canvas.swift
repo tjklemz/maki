@@ -106,9 +106,6 @@ class Canvas: NSView {
             if needsToDraw(path.targetRect) {
                 path.fill()
                 path.stroke()
-                NSColor.systemPink.setStroke()
-                NSBezierPath.stroke(path.bounds)
-                NSBezierPath.stroke(NSRect(x: path.bounds.origin.x + path.bounds.width / 2 - 2, y: path.bounds.origin.y + path.bounds.height / 2 - 2, width: 4, height: 4))
             }
         }
 
@@ -183,13 +180,14 @@ class Canvas: NSView {
                 let last = els.count - 1
                 let top = els[last]
                 let newPath = top.path
-                let angle: CGFloat = 45
+                let angle: CGFloat = 30
                 let s: CGFloat = 0.9
                 let scale: CGFloat = key == "M" ? 1 / s : s
 
                 let x = NSMidX(newPath.bounds)
                 let y = NSMidY(newPath.bounds)
                 newPath.transform(using: AffineTransform(translationByX: -x, byY: -y))
+//                let origin = newPath.bounds.origin
 
                 var transform = AffineTransform()
                 transform.rotate(byDegrees: angle)
@@ -197,6 +195,10 @@ class Canvas: NSView {
                 transform.rotate(byDegrees: -angle)
                 newPath.transform(using: transform)
 
+//                let newOrigin = newPath.bounds.origin
+//                let dX = origin.x - newOrigin.x
+//                let dY = origin.y - newOrigin.y
+//                newPath.transform(using: AffineTransform(translationByX: x + dX, byY: y + dY))
                 newPath.transform(using: AffineTransform(translationByX: x, byY: y))
                 frames[current].elements[last] = Symbol(uuid: top.uuid, path: newPath)
                 setNeedsDisplay(self.bounds)
