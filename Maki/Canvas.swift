@@ -143,11 +143,15 @@ class Canvas: NSView {
         let cy = NSMidY(path.bounds)
         let dx = point.x - cx
         let dy = point.y - cy
-        let dist = sqrt((p.x - cx)*(p.x - cx) + (p.y - cy)*(p.y - cy))
+        let dist = max(sqrt((p.x - cx)*(p.x - cx) + (p.y - cy)*(p.y - cy)), 1)
         let newDist = sqrt(dx*dx + dy*dy)
-        let scale = newDist / dist
-        let angle: CGFloat = 180*atan(dy/dx) / CGFloat.pi
-        print("angle", angle)
+        let scale = max(newDist / dist, 0.2)
+        var angle: CGFloat = 180*atan(dy/dx) / CGFloat.pi
+        if angle.isNaN {
+            angle = 0
+        } else if angle.isInfinite {
+            angle = angle < 0 ? -90 : 90
+        }
 
         path.transform(using: AffineTransform(translationByX: -cx, byY: -cy))
 
