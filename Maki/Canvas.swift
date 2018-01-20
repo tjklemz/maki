@@ -82,8 +82,9 @@ class Canvas: NSView {
             self.setNeedsDisplay(bounds)
         }
     }
-    var lastPoint = NSPoint()
+    var originalPoint = NSPoint()
     var didStart = false
+    var original = NSBezierPath()
 
     override var preservesContentDuringLiveResize : Bool {
         return true
@@ -124,39 +125,41 @@ class Canvas: NSView {
             return
         }
 
-        let point = convert(event.locationInWindow, from: nil)
-        if !didStart {
-            lastPoint = point
-            didStart = true
-        }
-
         let els = frames[current].elements
         let last = els.count - 1
         let top = els[last]
-        let path = top.path
+
+        let point = convert(event.locationInWindow, from: nil)
+        if !didStart {
+            originalPoint = point
+            original = top.path
+            didStart = true
+        }
+
+        let path = original.copy() as! NSBezierPath
+        let p = originalPoint
         
         let cx = NSMidX(path.bounds)
         let cy = NSMidY(path.bounds)
         let dx = point.x - cx
         let dy = point.y - cy
-        let dist = sqrt((lastPoint.x - cx)*(lastPoint.x - cx) + (lastPoint.y - cy)*(lastPoint.y - cy))
+        let dist = sqrt((p.x - cx)*(p.x - cx) + (p.y - cy)*(p.y - cy))
         let newDist = sqrt(dx*dx + dy*dy)
         let scale = newDist / dist
-
-        let angle: CGFloat = -45 // abs(dx) > 0 ? -180*atan(dy / dx)/CGFloat.pi : 90
+        let angle: CGFloat = 180*atan(dy/dx) / CGFloat.pi
+        print("angle", angle)
 
         path.transform(using: AffineTransform(translationByX: -cx, byY: -cy))
 
         var transform = AffineTransform()
         transform.rotate(byDegrees: angle)
-        transform.scale(x: 1 / scale, y: scale)
+        transform.scale(x: scale, y: 1 / scale)
         transform.rotate(byDegrees: -angle)
         path.transform(using: transform)
 
         path.transform(using: AffineTransform(translationByX: cx, byY: cy))
         frames[current].elements[last] = Symbol(uuid: top.uuid, path: path)
         setNeedsDisplay(self.bounds)
-        lastPoint = point
         return
     }
     
