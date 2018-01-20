@@ -15,6 +15,8 @@ class ViewController: NSViewController {
         super.viewDidLoad()
 
         // Do any additional setup after loading the view.
+        let trackingArea: NSTrackingArea = NSTrackingArea(rect: canvas.bounds, options: [.activeAlways, .mouseMoved, .mouseEnteredAndExited], owner: canvas, userInfo: nil)
+        canvas.addTrackingArea(trackingArea)
     }
 
     override var representedObject: Any? {

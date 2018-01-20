@@ -82,6 +82,8 @@ class Canvas: NSView {
             self.setNeedsDisplay(bounds)
         }
     }
+    var lastPoint = NSPoint()
+    var didStart = false
 
     override var preservesContentDuringLiveResize : Bool {
         return true
@@ -117,6 +119,52 @@ class Canvas: NSView {
         }
     }
     
+    override func mouseMoved(with event: NSEvent) {
+        guard frames[current].elements.count > 0 else {
+            return
+        }
+
+        let point = convert(event.locationInWindow, from: nil)
+        if !didStart {
+            lastPoint = point
+            didStart = true
+        }
+
+        let els = frames[current].elements
+        let last = els.count - 1
+        let top = els[last]
+        let path = top.path
+        
+        let cx = NSMidX(path.bounds)
+        let cy = NSMidY(path.bounds)
+        let dx = point.x - cx
+        let dy = point.y - cy
+        let dist = sqrt((lastPoint.x - cx)*(lastPoint.x - cx) + (lastPoint.y - cy)*(lastPoint.y - cy))
+        let newDist = sqrt(dx*dx + dy*dy)
+        let scale = newDist / dist
+
+        let angle: CGFloat = -45 //abs(dX) > 0 ? -180*atan(dY / dX)/CGFloat.pi : 90
+        
+        path.transform(using: AffineTransform(translationByX: -cx, byY: -cy))
+
+        var transform = AffineTransform()
+        transform.rotate(byDegrees: angle)
+        transform.scale(x: scale, y: scale)
+//        if scale < 1 {
+//            transform.scale(x: 1 / scale, y: scale)
+//        } else {
+//            transform.scale(x: scale, y: 1 / scale)
+//        }
+        transform.rotate(byDegrees: -angle)
+        path.transform(using: transform)
+
+        path.transform(using: AffineTransform(translationByX: cx, byY: cy))
+        frames[current].elements[last] = Symbol(uuid: top.uuid, path: path)
+        setNeedsDisplay(self.bounds)
+        lastPoint = point
+        return
+    }
+    
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
 
@@ -127,10 +175,12 @@ class Canvas: NSView {
 
             if el.inPath(point) {
                 selection = Selection(symbol: el, point: point)
+                setNeedsDisplay(self.bounds)
                 return
             }
         }
         selection = nil
+        setNeedsDisplay(self.bounds)
     }
     
     override func mouseDragged(with event: NSEvent) {
@@ -171,37 +221,6 @@ class Canvas: NSView {
             case "q":
                 let path = NSBezierPath(rect: self.bounds)
                 addShape(Symbol(path))
-                return
-            case "m", "M":
-                if frames[current].elements.count == 0 {
-                    addShape(createCircle())
-                }
-                let els = frames[current].elements
-                let last = els.count - 1
-                let top = els[last]
-                let newPath = top.path
-                let angle: CGFloat = 30
-                let s: CGFloat = 0.9
-                let scale: CGFloat = key == "M" ? 1 / s : s
-
-                let x = NSMidX(newPath.bounds)
-                let y = NSMidY(newPath.bounds)
-                newPath.transform(using: AffineTransform(translationByX: -x, byY: -y))
-//                let origin = newPath.bounds.origin
-
-                var transform = AffineTransform()
-                transform.rotate(byDegrees: angle)
-                transform.scale(x: 1 / scale, y: scale)
-                transform.rotate(byDegrees: -angle)
-                newPath.transform(using: transform)
-
-//                let newOrigin = newPath.bounds.origin
-//                let dX = origin.x - newOrigin.x
-//                let dY = origin.y - newOrigin.y
-//                newPath.transform(using: AffineTransform(translationByX: x + dX, byY: y + dY))
-                newPath.transform(using: AffineTransform(translationByX: x, byY: y))
-                frames[current].elements[last] = Symbol(uuid: top.uuid, path: newPath)
-                setNeedsDisplay(self.bounds)
                 return
             case "t":
                 let t: [CGFloat] = [1/6.0, 2/6.0, 3/6.0, 4/6.0, 5/6.0]
