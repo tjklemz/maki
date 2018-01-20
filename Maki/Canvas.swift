@@ -143,18 +143,13 @@ class Canvas: NSView {
         let newDist = sqrt(dx*dx + dy*dy)
         let scale = newDist / dist
 
-        let angle: CGFloat = -45 //abs(dX) > 0 ? -180*atan(dY / dX)/CGFloat.pi : 90
-        
+        let angle: CGFloat = -45 // abs(dx) > 0 ? -180*atan(dy / dx)/CGFloat.pi : 90
+
         path.transform(using: AffineTransform(translationByX: -cx, byY: -cy))
 
         var transform = AffineTransform()
         transform.rotate(byDegrees: angle)
-        transform.scale(x: scale, y: scale)
-//        if scale < 1 {
-//            transform.scale(x: 1 / scale, y: scale)
-//        } else {
-//            transform.scale(x: scale, y: 1 / scale)
-//        }
+        transform.scale(x: 1 / scale, y: scale)
         transform.rotate(byDegrees: -angle)
         path.transform(using: transform)
 
