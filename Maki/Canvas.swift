@@ -12,44 +12,59 @@ import CoreGraphics
 struct Symbol {
     let uuid: String
     var path: NSBezierPath
+    var transform: AffineTransform?
 }
 
 extension Symbol {
+    init(uuid: String, path: NSBezierPath) {
+        self.init(uuid: uuid, path: path, transform: nil)
+    }
+
     init(_ path: NSBezierPath) {
         self.init(uuid: UUID().uuidString, path: path)
     }
     
     init(_ symbol: Symbol) {
-        self.init(uuid: symbol.uuid, path: symbol.path.copy() as! NSBezierPath)
+        self.init(uuid: symbol.uuid, path: symbol.path.copy() as! NSBezierPath, transform: symbol.transform)
     }
 }
 
 extension Symbol {
-    func inBounds(_ point: NSPoint) -> Bool {
-        return self.path.targetRect.contains(point)
+    var transformedPath: NSBezierPath {
+        if let transform = self.transform {
+            let path = self.path.copy() as! NSBezierPath
+            let cx = NSMidX(path.bounds)
+            let cy = NSMidY(path.bounds)
+            path.transform(using: AffineTransform(translationByX: -cx, byY: -cy))
+            path.transform(using: transform)
+            path.transform(using: AffineTransform(translationByX: cx, byY: cy))
+            return path
+        }
+        return self.path
+    }
+
+    func contains(_ point: NSPoint) -> Bool {
+        // TODO: stroke issues should be handled by entirely separate paths, instead of Postscript style strokes
+        let path = self.transformedPath
+        return path.targetRect.contains(point) && path.contains(point)
     }
     
-    func inPath(_ point: NSPoint) -> Bool {
-        // TODO: have list of outlinePaths (tapTargets) so we don't create each time
-        //  Then there won't be two checks, since the shape will be cached
-        return self.path.contains(point) || self.path.outlinePath().contains(point)
+    var bounds: NSRect {
+        return self.transformedPath.bounds
     }
 }
 
 struct Selection {
     var symbol: Symbol
-    var offset: NSPoint
+    var point: NSPoint
     
-    init(symbol: Symbol, point: NSPoint) {
-        self.symbol = symbol
-        self.offset = NSPoint(x: symbol.path.bounds.minX - point.x, y: symbol.path.bounds.minY - point.y)
-    }
-    
-    func move(to point: NSPoint) -> NSRect {
-        let bounds = symbol.path.bounds
-        let oldTargetRect = symbol.path.targetRect
-        symbol.path.transform(using: AffineTransform(translationByX: point.x - bounds.minX + offset.x, byY: point.y - bounds.minY + offset.y))
-        return symbol.path.targetRect.union(oldTargetRect)
+    mutating func move(to point: NSPoint) -> NSRect {
+        let bounds = symbol.bounds
+        let dx = self.point.x - point.x
+        let dy = self.point.y - point.y
+        symbol.path.transform(using: AffineTransform(translationByX: -dx, byY: -dy))
+        self.point = point
+        return symbol.bounds.union(bounds).insetBy(dx: -5, dy: -5)
     }
 }
 
@@ -82,9 +97,8 @@ class Canvas: NSView {
             self.setNeedsDisplay(bounds)
         }
     }
+    var transformTool = false
     var originalPoint = NSPoint()
-    var didStart = false
-    var original = NSBezierPath()
 
     override var preservesContentDuringLiveResize : Bool {
         return true
@@ -105,7 +119,7 @@ class Canvas: NSView {
         NSColor.black.setStroke()
         
         for el in frames[current].elements {
-            let path = el.path
+            let path = el.transformedPath
             if needsToDraw(path.targetRect) {
                 path.fill()
                 path.stroke()
@@ -121,22 +135,15 @@ class Canvas: NSView {
     }
     
     override func mouseMoved(with event: NSEvent) {
-        guard frames[current].elements.count > 0 else {
+        let count = frames[current].elements.count
+
+        guard transformTool && count > 0 else {
             return
         }
 
-        let els = frames[current].elements
-        let last = els.count - 1
-        let top = els[last]
-
         let point = convert(event.locationInWindow, from: nil)
-        if !didStart {
-            originalPoint = point
-            original = top.path
-            didStart = true
-        }
 
-        let path = original.copy() as! NSBezierPath
+        let path = frames[current].elements[count - 1].path
         let p = originalPoint
         
         let cx = NSMidX(path.bounds)
@@ -153,16 +160,13 @@ class Canvas: NSView {
             angle = angle < 0 ? -90 : 90
         }
 
-        path.transform(using: AffineTransform(translationByX: -cx, byY: -cy))
-
         var transform = AffineTransform()
         transform.rotate(byDegrees: angle)
         transform.scale(x: scale, y: 1 / scale)
         transform.rotate(byDegrees: -angle)
-        path.transform(using: transform)
 
-        path.transform(using: AffineTransform(translationByX: cx, byY: cy))
-        frames[current].elements[last] = Symbol(uuid: top.uuid, path: path)
+        frames[current].elements[count - 1].transform = transform
+
         setNeedsDisplay(self.bounds)
         return
     }
@@ -170,12 +174,15 @@ class Canvas: NSView {
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
 
-        for el in frames[current].elements.reversed() {
-            guard el.inBounds(point) else {
-                continue
-            }
+        if transformTool {
+            transformTool = false
+            originalPoint = NSPoint()
+            setNeedsDisplay(self.bounds)
+            return
+        }
 
-            if el.inPath(point) {
+        for el in frames[current].elements.reversed() {
+            if el.contains(point) {
                 selection = Selection(symbol: el, point: point)
                 setNeedsDisplay(self.bounds)
                 return
@@ -186,13 +193,10 @@ class Canvas: NSView {
     }
     
     override func mouseDragged(with event: NSEvent) {
-        guard let selection = selection else {
-            return
-        }
-
         let point = convert(event.locationInWindow, from: nil)
-        let bounds = selection.move(to: point)
-        setNeedsDisplay(bounds)
+        if let bounds = selection?.move(to: point) {
+            setNeedsDisplay(bounds)
+        }
     }
     
     override func mouseUp(with event: NSEvent) {
@@ -221,6 +225,14 @@ class Canvas: NSView {
                 addShape(createRect())
                 return
             case "q":
+                let count = frames[current].elements.count
+                if !transformTool && count > 0 {
+                    let point = convert(event.locationInWindow, from: nil)
+                    transformTool = true
+                    originalPoint = point
+                }
+                return
+            case "b":
                 let path = NSBezierPath(rect: self.bounds)
                 addShape(Symbol(path))
                 return
@@ -246,13 +258,13 @@ class Canvas: NSView {
                 let result: NSBezierPath = {
                     switch key {
                     case "u":
-                        return top.path.union(with: bottom.path)
+                        return top.transformedPath.union(with: bottom.transformedPath)
                     case "i":
-                        return top.path.intersect(with: bottom.path)
+                        return top.transformedPath.intersect(with: bottom.transformedPath)
                     case "d":
-                        return top.path.difference(with: bottom.path)
+                        return top.transformedPath.difference(with: bottom.transformedPath)
                     case "x":
-                        return top.path.xor(with: bottom.path)
+                        return top.transformedPath.xor(with: bottom.transformedPath)
                     default:
                         return NSBezierPath()
                     }
@@ -345,7 +357,7 @@ class Canvas: NSView {
     
     func addShape(_ el: Symbol) {
         frames[current].elements.append(el)
-        setNeedsDisplay(el.path.targetRect)
+        setNeedsDisplay(el.transformedPath.targetRect)
     }
     
     func removeLast(_ n: Int = 1) {
@@ -353,7 +365,7 @@ class Canvas: NSView {
         var k = n
         while k > 0 && frames[current].elements.count > 0 {
             let shape = frames[current].elements.removeLast()
-            rect = rect.union(shape.path.targetRect)
+            rect = rect.union(shape.transformedPath.targetRect)
             k -= 1
         }
         setNeedsDisplay(rect)
