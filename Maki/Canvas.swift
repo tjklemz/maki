@@ -12,12 +12,12 @@ import CoreGraphics
 struct Symbol {
     let uuid: String
     var path: NSBezierPath
-    var transform: AffineTransform?
+    var transform: NSAffineTransform
 }
 
 extension Symbol {
     init(uuid: String, path: NSBezierPath) {
-        self.init(uuid: uuid, path: path, transform: nil)
+        self.init(uuid: uuid, path: path, transform: NSAffineTransform())
     }
 
     init(_ path: NSBezierPath) {
@@ -31,16 +31,18 @@ extension Symbol {
 
 extension Symbol {
     var transformedPath: NSBezierPath {
-        if let transform = self.transform {
-            let path = self.path.copy() as! NSBezierPath
-            let cx = NSMidX(path.bounds)
-            let cy = NSMidY(path.bounds)
-            path.transform(using: AffineTransform(translationByX: -cx, byY: -cy))
-            path.transform(using: transform)
-            path.transform(using: AffineTransform(translationByX: cx, byY: cy))
-            return path
-        }
-        return self.path
+        let path = self.path.copy() as! NSBezierPath
+        let bounds = path.bounds
+        let cx = NSMidX(bounds)
+        let cy = NSMidY(bounds)
+        path.transform(using: AffineTransform(translationByX: -cx, byY: -cy))
+        path.transform(using: transform as AffineTransform)
+        path.transform(using: AffineTransform(translationByX: cx, byY: cy))
+        return path
+    }
+
+    var bounds: NSRect {
+        return self.transformedPath.bounds
     }
 
     func contains(_ point: NSPoint) -> Bool {
@@ -48,9 +50,14 @@ extension Symbol {
         let path = self.transformedPath
         return path.targetRect.contains(point) && path.contains(point)
     }
-    
-    var bounds: NSRect {
-        return self.transformedPath.bounds
+
+    mutating func applyTransform(_ transform: AffineTransform) {
+        self.transform.transformStruct.m11 = transform.m11
+        self.transform.transformStruct.m12 = transform.m12
+        self.transform.transformStruct.m21 = transform.m21
+        self.transform.transformStruct.m22 = transform.m22
+        self.transform.transformStruct.tX = transform.tX
+        self.transform.transformStruct.tY = transform.tY
     }
 }
 
@@ -65,6 +72,10 @@ struct Selection {
         symbol.path.transform(using: AffineTransform(translationByX: -dx, byY: -dy))
         self.point = point
         return symbol.bounds.union(bounds).insetBy(dx: -5, dy: -5)
+    }
+
+    mutating func applyTransform(_ transform: AffineTransform) {
+        symbol.applyTransform(transform)
     }
 }
 
@@ -98,7 +109,7 @@ class Canvas: NSView {
         }
     }
     var transformTool = false
-    var originalPoint = NSPoint()
+    var currentPoint = NSPoint()
 
     override var preservesContentDuringLiveResize : Bool {
         return true
@@ -125,6 +136,17 @@ class Canvas: NSView {
                 path.stroke()
             }
         }
+        
+        if let symbol = selection?.symbol, transformTool {
+            NSColor.black.setStroke()
+            let path = NSBezierPath()
+            let b = symbol.path.bounds
+            path.move(to: NSPoint(x: NSMidX(b), y: NSMidY(b)))
+            path.line(to: currentPoint)
+            path.setLineDash([6.0, 6.0], count: 2, phase: 0.0)
+            path.lineWidth = 0.5
+            path.stroke()
+        }
 
         NSColor.red.setStroke()
         
@@ -135,16 +157,17 @@ class Canvas: NSView {
     }
     
     override func mouseMoved(with event: NSEvent) {
-        let count = frames[current].elements.count
-
-        guard transformTool && count > 0 else {
-            return
-        }
-
         let point = convert(event.locationInWindow, from: nil)
 
-        let path = frames[current].elements[count - 1].path
-        let p = originalPoint
+        currentPoint = point
+
+        guard
+            let path = selection?.symbol.path,
+            let p = selection?.point,
+            transformTool
+        else {
+            return
+        }
         
         let cx = NSMidX(path.bounds)
         let cy = NSMidY(path.bounds)
@@ -165,7 +188,7 @@ class Canvas: NSView {
         transform.scale(x: scale, y: 1 / scale)
         transform.rotate(byDegrees: -angle)
 
-        frames[current].elements[count - 1].transform = transform
+        selection?.applyTransform(transform)
 
         setNeedsDisplay(self.bounds)
         return
@@ -176,7 +199,7 @@ class Canvas: NSView {
 
         if transformTool {
             transformTool = false
-            originalPoint = NSPoint()
+            selection = nil
             setNeedsDisplay(self.bounds)
             return
         }
@@ -200,7 +223,7 @@ class Canvas: NSView {
     }
     
     override func mouseUp(with event: NSEvent) {
-        guard let rect = selection?.symbol.path.bounds else {
+        guard let rect = selection?.symbol.transformedPath.bounds else {
             return
         }
         setNeedsDisplay(rect)
@@ -229,7 +252,7 @@ class Canvas: NSView {
                 if !transformTool && count > 0 {
                     let point = convert(event.locationInWindow, from: nil)
                     transformTool = true
-                    originalPoint = point
+                    selection = Selection(symbol: frames[current].elements[count - 1], point: point)
                 }
                 return
             case "b":
